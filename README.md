@@ -33,6 +33,8 @@ Local-network Netflix launcher made of three parts:
    pnpm start
    ```
 
+   `pnpm start` runs the built server from `apps/server/dist`. It does not rebuild files and it does not hot reload.
+
 4. Load the extension in Chrome:
    - Open `chrome://extensions`
    - Enable Developer Mode
@@ -49,4 +51,16 @@ Local-network Netflix launcher made of three parts:
 
 - The extension defaults to `ws://localhost:8787/ws` in `apps/extension/src/config.ts`.
 - If Chrome runs on a different machine than the server, update that value before building.
-- Version 1 supports opening Netflix URLs and showing live playback state. Playback controls come later.
+- Version 1 supports opening Netflix watch/title/share URLs and showing live playback state. Playback controls come later.
+
+## Local Network Run
+
+Use this flow when you want to run the app on your local network in a production-style setup:
+
+```bash
+pnpm install
+pnpm build
+pnpm start
+```
+
+If you change code later, run `pnpm build` again and restart `pnpm start` so the server uses the latest output.

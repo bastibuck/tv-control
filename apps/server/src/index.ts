@@ -170,7 +170,7 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
 
         const normalizedUrl = normalizeNetflixUrl(message.url);
         if (!normalizedUrl) {
-          sendError(socket, "Only direct Netflix watch/title URLs are supported right now.");
+          sendError(socket, "Only Netflix watch, title, or supported share URLs are accepted.");
           return;
         }
 

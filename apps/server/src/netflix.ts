@@ -1,15 +1,21 @@
 const SUPPORTED_HOSTS = new Set(["netflix.com", "www.netflix.com"]);
 
-function extractTitleOrWatchId(pathname: string): string | null {
-  const match = pathname.match(/^\/(watch|title)\/(\d+)/);
-  return match?.[2] ?? null;
+function extractIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?(?:watch|title)\/(\d+)/);
+  return match?.[1] ?? null;
+}
+
+function extractIdFromQuery(parsed: URL): string | null {
+  const unifiedEntityId = parsed.searchParams.get("unifiedEntityIdEncoded");
+  const match = unifiedEntityId?.match(/(?:Video|Title):(\d+)/i);
+  return match?.[1] ?? null;
 }
 
 export function normalizeNetflixUrl(rawUrl: string): string | null {
   let parsed: URL;
 
   try {
-    parsed = new URL(rawUrl);
+    parsed = new URL(rawUrl.trim());
   } catch {
     return null;
   }
@@ -19,7 +25,7 @@ export function normalizeNetflixUrl(rawUrl: string): string | null {
     return null;
   }
 
-  const id = extractTitleOrWatchId(parsed.pathname);
+  const id = extractIdFromPath(parsed.pathname) ?? extractIdFromQuery(parsed);
   if (!id) {
     return null;
   }
