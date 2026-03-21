@@ -11,9 +11,12 @@ type BackgroundToContentMessage = {
   command: "play" | "pause";
 };
 
+const HEARTBEAT_INTERVAL_MS = 20000;
+
 let socket: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let latestPlayback: PlaybackState | null = null;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 function sendToServer(message: unknown): void {
   if (socket?.readyState === WebSocket.OPEN) {
@@ -65,6 +68,21 @@ function scheduleReconnect(): void {
   }, RECONNECT_DELAY_MS);
 }
 
+function stopHeartbeat(): void {
+  if (heartbeatTimer !== null) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
+function startHeartbeat(): void {
+  stopHeartbeat();
+
+  heartbeatTimer = setInterval(() => {
+    sendToServer({ type: "heartbeat" });
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
 function connect(): void {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
@@ -74,6 +92,7 @@ function connect(): void {
 
   socket.addEventListener("open", () => {
     sendToServer({ type: "hello", role: "extension", name: "chrome-netflix-bridge" });
+    startHeartbeat();
 
     if (latestPlayback) {
       sendToServer({ type: "playback_state", playback: latestPlayback });
@@ -105,11 +124,13 @@ function connect(): void {
   });
 
   socket.addEventListener("close", () => {
+    stopHeartbeat();
     socket = null;
     scheduleReconnect();
   });
 
   socket.addEventListener("error", () => {
+    stopHeartbeat();
     socket?.close();
   });
 }

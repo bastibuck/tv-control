@@ -189,6 +189,10 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         break;
       }
 
+      case "heartbeat": {
+        break;
+      }
+
       case "playback_command": {
         if (socket.role !== "remote-ui") {
           sendError(socket, "Only remote UI clients can control playback.");

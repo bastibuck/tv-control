@@ -32,6 +32,10 @@ export const requestStateMessageSchema = z.object({
   type: z.literal("request_state")
 });
 
+export const heartbeatMessageSchema = z.object({
+  type: z.literal("heartbeat")
+});
+
 export const playbackCommandMessageSchema = z.object({
   type: z.literal("playback_command"),
   command: z.enum(["play", "pause"])
@@ -46,6 +50,7 @@ export const clientToServerMessageSchema = z.discriminatedUnion("type", [
   helloMessageSchema,
   openNetflixUrlMessageSchema,
   requestStateMessageSchema,
+  heartbeatMessageSchema,
   playbackCommandMessageSchema,
   playbackStateMessageSchema
 ]);
