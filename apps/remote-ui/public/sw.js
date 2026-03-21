@@ -1,12 +1,20 @@
 const APP_SHELL_CACHE = "tv-control-app-shell-v1";
 const STATIC_CACHE = "tv-control-static-v1";
+const WEBSOCKET_PATH = "/ws";
 const APP_SHELL_ASSETS = ["/", "/manifest.json", "/icon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
+
+async function resolveAppShellAssets() {
+  const response = await fetch("/", { cache: "no-cache" });
+  const html = await response.text();
+  const assetMatches = Array.from(html.matchAll(/(?:href|src)="(\/assets\/[^"]+)"/g), (match) => match[1]);
+  return [...new Set([...APP_SHELL_ASSETS, ...assetMatches])];
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(APP_SHELL_CACHE)
-      .then((cache) => cache.addAll(APP_SHELL_ASSETS))
+    resolveAppShellAssets()
+      .catch(() => APP_SHELL_ASSETS)
+      .then((assets) => caches.open(APP_SHELL_CACHE).then((cache) => cache.addAll(assets)))
       .then(() => self.skipWaiting())
   );
 });
@@ -33,22 +41,22 @@ self.addEventListener("fetch", (event) => {
   }
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname === "/ws") {
+  if (url.origin !== self.location.origin || url.pathname === WEBSOCKET_PATH) {
     return;
   }
 
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
+        .then(async (response) => {
           if (response.ok) {
-            const responseClone = response.clone();
-            event.waitUntil(caches.open(APP_SHELL_CACHE).then((cache) => cache.put("/", responseClone)));
+            const cache = await caches.open(APP_SHELL_CACHE);
+            await cache.put("/", response.clone());
           }
 
           return response;
         })
-        .catch(async () => (await caches.match(request)) ?? (await caches.match("/")))
+        .catch(async () => (await caches.match("/")) ?? Response.error())
     );
     return;
   }
@@ -57,14 +65,14 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then(
       (cachedResponse) =>
         cachedResponse ??
-        fetch(request).then((response) => {
+        fetch(request).then(async (response) => {
           if (response.ok) {
-            const responseClone = response.clone();
-            event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.put(request, responseClone)));
+            const cache = await caches.open(STATIC_CACHE);
+            await cache.put(request, response.clone());
           }
 
           return response;
-        })
+        }).catch(() => Response.error())
     )
   );
 });
