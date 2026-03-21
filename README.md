@@ -51,7 +51,7 @@ Local-network Netflix launcher made of three parts:
 
 - The extension defaults to `ws://localhost:8787/ws` in `apps/extension/src/config.ts`.
 - If Chrome runs on a different machine than the server, update that value before building.
-- Version 1 supports opening Netflix watch/title/share URLs and showing live playback state. Playback controls come later.
+- The app supports opening Netflix watch/title/share URLs, showing live playback state, and sending play/pause controls.
 
 ## Local Network Run
 

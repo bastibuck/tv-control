@@ -1,6 +1,10 @@
 import type { PlaybackState, PlaybackStatus } from "@tv-control/protocol";
 
 type PlaybackDetails = Pick<PlaybackState, "title" | "currentTime" | "duration" | "url">;
+type IncomingCommandMessage = {
+  type: "playback_command";
+  command: "play" | "pause";
+};
 
 let attachedVideo: HTMLVideoElement | null = null;
 let lastHref = location.href;
@@ -45,6 +49,7 @@ function sendPlayback(force = false): void {
 
   const playback: PlaybackState = {
     status: computePlaybackStatus(attachedVideo),
+    controllable: attachedVideo !== null,
     ...playbackDetails(attachedVideo),
     updatedAt: now
   };
@@ -62,6 +67,24 @@ function attachVideo(video: HTMLVideoElement): void {
 
   for (const eventName of ["play", "pause", "playing", "waiting", "loadedmetadata", "timeupdate", "seeking"]) {
     video.addEventListener(eventName, () => sendPlayback(eventName !== "timeupdate"));
+  }
+
+  sendPlayback(true);
+}
+
+async function applyPlaybackCommand(command: "play" | "pause"): Promise<void> {
+  if (!attachedVideo) {
+    locateVideo();
+  }
+
+  if (!attachedVideo) {
+    return;
+  }
+
+  if (command === "play") {
+    await attachedVideo.play().catch(() => undefined);
+  } else {
+    attachedVideo.pause();
   }
 
   sendPlayback(true);
@@ -101,5 +124,13 @@ window.setInterval(() => {
     locateVideo();
   }
 }, 1000);
+
+chrome.runtime.onMessage.addListener((message: IncomingCommandMessage) => {
+  if (message.type !== "playback_command") {
+    return;
+  }
+
+  void applyPlaybackCommand(message.command);
+});
 
 sendPlayback(true);

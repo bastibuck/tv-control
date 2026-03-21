@@ -6,6 +6,11 @@ type ContentMessage = {
   playback: PlaybackState;
 };
 
+type BackgroundToContentMessage = {
+  type: "playback_command";
+  command: "play" | "pause";
+};
+
 let socket: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let latestPlayback: PlaybackState | null = null;
@@ -35,6 +40,18 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
   }
 
   await chrome.tabs.create({ url, active: true });
+}
+
+async function dispatchPlaybackCommand(command: "play" | "pause"): Promise<void> {
+  const netflixTab = await findNetflixTab();
+  if (netflixTab?.id === undefined) {
+    return;
+  }
+
+  await chrome.tabs.sendMessage(netflixTab.id, {
+    type: "playback_command",
+    command
+  } satisfies BackgroundToContentMessage);
 }
 
 function scheduleReconnect(): void {
@@ -80,6 +97,10 @@ function connect(): void {
     const message = parsed.data;
     if (message.type === "open_url") {
       await openOrReuseNetflixTab(message.url);
+    }
+
+    if (message.type === "execute_playback_command") {
+      await dispatchPlaybackCommand(message.command);
     }
   });
 

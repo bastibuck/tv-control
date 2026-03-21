@@ -189,6 +189,24 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         break;
       }
 
+      case "playback_command": {
+        if (socket.role !== "remote-ui") {
+          sendError(socket, "Only remote UI clients can control playback.");
+          return;
+        }
+
+        if (!extensionClient || extensionClient.readyState !== WebSocket.OPEN) {
+          sendError(socket, "No extension client is currently connected.");
+          return;
+        }
+
+        sendMessage(extensionClient, {
+          type: "execute_playback_command",
+          command: message.command
+        });
+        break;
+      }
+
       case "playback_state": {
         if (socket.role !== "extension") {
           sendError(socket, "Only extension clients can report playback state.");

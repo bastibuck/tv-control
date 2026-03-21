@@ -7,25 +7,54 @@ import {
 
 type ConnectionState = "connecting" | "connected" | "disconnected";
 
-function formatTime(seconds?: number): string {
+function formatRuntime(seconds?: number): string {
   if (seconds === undefined || Number.isNaN(seconds)) {
-    return "--:--";
+    return "Runtime unknown";
   }
 
-  const totalSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(totalSeconds / 60);
-  const remainingSeconds = totalSeconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  const totalMinutes = Math.max(1, Math.round(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
+}
+
+function formatProgressTime(seconds?: number): string {
+  if (seconds === undefined || Number.isNaN(seconds)) {
+    return "--";
+  }
+
+  const totalMinutes = Math.max(0, Math.round(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+
+  return `${hours} hr ${minutes} min`;
 }
 
 function playbackLabel(playback: PlaybackState | null): string {
   if (!playback) {
-    return "Waiting for Netflix tab";
+    return "Stand by";
+  }
+
+  if (!playback.controllable) {
+    return "Not controllable yet";
   }
 
   switch (playback.status) {
     case "idle":
-      return "Idle";
+      return "Ready";
     case "loading":
       return "Loading";
     case "playing":
@@ -33,6 +62,46 @@ function playbackLabel(playback: PlaybackState | null): string {
     case "paused":
       return "Paused";
   }
+}
+
+function currentAction(playback: PlaybackState | null): "play" | "pause" {
+  return playback?.status === "playing" || playback?.status === "loading" ? "pause" : "play";
+}
+
+function playbackActionLabel(playback: PlaybackState | null): string {
+  return currentAction(playback) === "pause" ? "Pause" : "Play";
+}
+
+function primaryHeading(playback: PlaybackState | null): string {
+  if (playback?.status === "playing" || playback?.status === "paused" || playback?.status === "loading") {
+    return playback.title ?? "Netflix is ready";
+  }
+
+  return "Pick tonight's stream";
+}
+
+function statusCopy(playback: PlaybackState | null, extensionConnected: boolean): string {
+  if (!extensionConnected) {
+    return "Connect Chrome with the extension to open or control Netflix.";
+  }
+
+  if (!playback) {
+    return "Paste a Netflix link to open something on your TV browser.";
+  }
+
+  if (!playback.controllable) {
+    return "Netflix is open, but the player is not ready for play or pause yet.";
+  }
+
+  if (playback.status === "playing") {
+    return "Your movie is live. Pause it here whenever you want.";
+  }
+
+  if (playback.status === "paused") {
+    return "Playback is paused. Resume it from your phone.";
+  }
+
+  return "Netflix is loading. Controls will wake up as soon as the player is ready.";
 }
 
 export function App(): ReactElement {
@@ -70,7 +139,7 @@ export function App(): ReactElement {
 
     nextSocket.addEventListener("open", () => {
       setSocketState("connected");
-      setStatusMessage("Paste a Netflix watch link to send it to Chrome.");
+      setStatusMessage("Connected to your local control server.");
       nextSocket.send(JSON.stringify({ type: "hello", role: "remote-ui", name: "phone-remote" }));
       nextSocket.send(JSON.stringify({ type: "request_state" }));
     });
@@ -119,7 +188,9 @@ export function App(): ReactElement {
         case "state_snapshot":
           setExtensionConnected(parsedMessage.extensionConnected);
           setPlayback(parsedMessage.playback);
-          if (parsedMessage.extensionConnected) {
+          if (parsedMessage.extensionConnected && parsedMessage.playback?.controllable) {
+            setStatusMessage("Player connected and ready.");
+          } else if (parsedMessage.extensionConnected) {
             setStatusMessage("Chrome extension connected.");
           }
           break;
@@ -127,6 +198,7 @@ export function App(): ReactElement {
           setStatusMessage(parsedMessage.message);
           break;
         case "open_url":
+        case "execute_playback_command":
           break;
       }
     });
@@ -144,12 +216,21 @@ export function App(): ReactElement {
   }, [reconnectVersion]);
 
   const progress = useMemo(() => {
-    if (!playback?.duration || !playback.currentTime) {
+    if (playback?.duration === undefined || playback.currentTime === undefined || playback.duration <= 0) {
       return 0;
     }
 
     return Math.min(100, (playback.currentTime / playback.duration) * 100);
   }, [playback]);
+
+  const action = currentAction(playback);
+  const actionDisabled =
+    socketState !== "connected" ||
+    !extensionConnected ||
+    !playback?.controllable ||
+    (action === "play" && playback.status !== "paused") ||
+    (action === "pause" && playback.status !== "playing" && playback.status !== "loading");
+  const showPlaybackMode = playback !== null && (playback.status === "playing" || playback.status === "paused" || playback.status === "loading");
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -171,74 +252,101 @@ export function App(): ReactElement {
     setReconnectVersion((value) => value + 1);
   }
 
+  function sendPlaybackCommand(command: "play" | "pause"): void {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setStatusMessage("Server is not connected yet.");
+      return;
+    }
+
+    if (!extensionConnected) {
+      setStatusMessage("Chrome extension is not connected.");
+      return;
+    }
+
+    if (!playback?.controllable) {
+      setStatusMessage("Netflix is not controllable yet.");
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "playback_command", command }));
+    setStatusMessage(command === "play" ? "Sending play command..." : "Sending pause command...");
+  }
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${showPlaybackMode ? "app-shell--playback" : "app-shell--launch"}`}>
       <section className="hero-card">
-        <p className="eyebrow">TV control</p>
-        <h1>Launch Netflix from your phone.</h1>
-        <p className="subtitle">
-          This remote talks to your local server, which forwards the command to your Chrome extension.
-        </p>
-      </section>
-
-      <section className="status-grid">
-        <article className="status-card">
-          <span className={`status-dot status-dot--${socketState}`} />
-          <div>
-            <h2>Server</h2>
-            <p>{socketState}</p>
-          </div>
-        </article>
-        <article className="status-card">
-          <span className={`status-dot status-dot--${extensionConnected ? "connected" : "disconnected"}`} />
-          <div>
-            <h2>Chrome extension</h2>
-            <p>{extensionConnected ? "connected" : "waiting"}</p>
-          </div>
-        </article>
-      </section>
-
-      <section className="panel-card">
-        <form className="launch-form" onSubmit={handleSubmit}>
-          <label htmlFor="netflix-url">Netflix link</label>
-          <input
-            id="netflix-url"
-            type="url"
-            inputMode="url"
-            placeholder="https://www.netflix.com/watch/..."
-            value={netflixUrl}
-            onChange={(event) => setNetflixUrl(event.target.value)}
-          />
-          <button type="submit" disabled={socketState !== "connected"}>
-            Open in Chrome
+        <div className="status-strip" aria-label="Connections">
+          <span className="status-chip" title={`Server: ${socketState}`}>
+            <span className={`status-dot status-dot--${socketState}`} />
+            <span className="status-symbol">S</span>
+          </span>
+          <span className="status-chip" title={`Chrome extension: ${extensionConnected ? "connected" : "disconnected"}`}>
+            <span className={`status-dot status-dot--${extensionConnected ? "connected" : "disconnected"}`} />
+            <span className="status-symbol">N</span>
+          </span>
+          <button className="reload-button" type="button" onClick={handleReconnect} aria-label="Reconnect websocket">
+            ↻
           </button>
-        </form>
-        <p className="status-message">{statusMessage}</p>
-        <button className="secondary-button" type="button" onClick={handleReconnect}>
-          Reconnect websocket
-        </button>
+        </div>
+
+        <p className="eyebrow">TV control</p>
+        <h1>{primaryHeading(playback)}</h1>
+        <p className="hero-copy">{statusCopy(playback, extensionConnected)}</p>
       </section>
 
-      <section className="panel-card playback-card">
-        <div className="playback-header">
-          <div>
-            <p className="eyebrow">Live playback</p>
-            <h2>{playback?.title ?? "No title yet"}</h2>
+      {!showPlaybackMode ? (
+        <section className="panel-card panel-card--feature">
+          <form className="launch-form" onSubmit={handleSubmit}>
+            <label htmlFor="netflix-url">Netflix link</label>
+            <input
+              id="netflix-url"
+              type="url"
+              inputMode="url"
+              placeholder="Paste a watch or share link"
+              value={netflixUrl}
+              onChange={(event) => setNetflixUrl(event.target.value)}
+            />
+            <button type="submit" disabled={socketState !== "connected"}>
+              Start in Chrome
+            </button>
+          </form>
+          <p className="status-message">{statusMessage}</p>
+        </section>
+      ) : (
+        <section className="panel-card panel-card--feature playback-card">
+          <div className="playback-topline">
+            <span className="playback-badge">{playbackLabel(playback)}</span>
           </div>
-          <span className="playback-badge">{playbackLabel(playback)}</span>
-        </div>
 
-        <div className="timeline-track" aria-hidden="true">
-          <div className="timeline-progress" style={{ width: `${progress}%` }} />
-        </div>
+          <button
+            className="transport-button"
+            type="button"
+            onClick={() => sendPlaybackCommand(action)}
+            disabled={actionDisabled}
+          >
+            {playbackActionLabel(playback)}
+          </button>
 
-        <div className="timeline-meta">
-          <span>{formatTime(playback?.currentTime)}</span>
-          <span>{formatTime(playback?.duration)}</span>
-        </div>
+          {!playback?.controllable ? <p className="control-note">The player is not ready yet, so controls will wake up shortly.</p> : null}
 
-        <p className="playback-url">{playback?.url ?? "Waiting for Netflix page data..."}</p>
-      </section>
+          <div className="timeline-track" aria-hidden="true">
+            <div className="timeline-progress" style={{ width: `${progress}%` }} />
+          </div>
+
+          <div className="timeline-meta">
+            <span>{formatProgressTime(playback?.currentTime)}</span>
+            <span>{formatRuntime(playback?.duration)}</span>
+          </div>
+
+          <div className="playback-footer">
+            <div>
+              <p className="footer-label">Now playing</p>
+              <h2>{playback?.title ?? "Netflix is open"}</h2>
+            </div>
+            <p className="playback-url">{playback?.url ?? "Waiting for Netflix page data..."}</p>
+          </div>
+        </section>
+      )}
     </main>
   );
 }
