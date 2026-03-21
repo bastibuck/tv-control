@@ -1,0 +1,235 @@
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  --bg: #f4ede1;
+  --bg-accent: #e8d8c4;
+  --panel: rgba(255, 250, 243, 0.86);
+  --panel-strong: #fff7ef;
+  --text: #241b18;
+  --muted: #6c5a52;
+  --accent: #b63e1f;
+  --accent-strong: #8f2d15;
+  --ok: #227c48;
+  --warn: #aa6421;
+  --off: #7f8a91;
+  background:
+    radial-gradient(circle at top right, rgba(182, 62, 31, 0.12), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(34, 124, 72, 0.14), transparent 30%),
+    linear-gradient(135deg, var(--bg), var(--bg-accent));
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(100%, 36rem);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.hero-card,
+.panel-card,
+.status-card {
+  backdrop-filter: blur(18px);
+  background: var(--panel);
+  border: 1px solid rgba(36, 27, 24, 0.08);
+  box-shadow: 0 18px 45px rgba(70, 44, 27, 0.1);
+}
+
+.hero-card {
+  padding: 1.5rem;
+  border-radius: 1.75rem;
+}
+
+.hero-card h1,
+.playback-header h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.hero-card h1 {
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  line-height: 0.95;
+}
+
+.subtitle,
+.status-message,
+.playback-url {
+  color: var(--muted);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.74rem;
+  color: var(--accent-strong);
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.status-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 1.25rem;
+}
+
+.status-card h2,
+.playback-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.status-card p,
+.timeline-meta,
+.playback-url,
+.subtitle,
+.status-message {
+  margin: 0.35rem 0 0;
+}
+
+.status-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 0.3rem rgba(127, 138, 145, 0.14);
+}
+
+.status-dot--connected {
+  background: var(--ok);
+  box-shadow: 0 0 0 0.3rem rgba(34, 124, 72, 0.14);
+}
+
+.status-dot--connecting {
+  background: var(--warn);
+  box-shadow: 0 0 0 0.3rem rgba(170, 100, 33, 0.14);
+}
+
+.status-dot--disconnected {
+  background: var(--off);
+}
+
+.panel-card {
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border-radius: 1.5rem;
+}
+
+.launch-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.launch-form label {
+  font-weight: 600;
+}
+
+.launch-form input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(36, 27, 24, 0.14);
+  background: var(--panel-strong);
+}
+
+.launch-form button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.95rem 1.2rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff7f0;
+  font-weight: 700;
+}
+
+.launch-form button:disabled {
+  opacity: 0.55;
+}
+
+.secondary-button {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(36, 27, 24, 0.14);
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 247, 239, 0.75);
+  color: var(--text);
+}
+
+.playback-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.playback-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.playback-badge {
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(182, 62, 31, 0.12);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.timeline-track {
+  position: relative;
+  overflow: hidden;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: rgba(36, 27, 24, 0.08);
+}
+
+.timeline-progress {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d56433, #b63e1f);
+}
+
+.timeline-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.playback-url {
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .playback-header {
+    flex-direction: column;
+  }
+}
