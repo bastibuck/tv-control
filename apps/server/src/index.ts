@@ -2,7 +2,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
-import { extname, join, normalize } from "node:path";
+import { basename, extname, join, normalize } from "node:path";
 import {
   clientToServerMessageSchema,
   errorMessageSchema,
@@ -31,6 +31,7 @@ const mimeTypes: Record<string, string> = {
   ".ico": "image/x-icon",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
   ".svg": "image/svg+xml; charset=utf-8"
 };
 
@@ -126,9 +127,15 @@ async function serveRemoteUi(pathname: string, response: ServerResponse): Promis
     return;
   }
 
+  const fileName = basename(target);
+  const cacheControl =
+    fileName === "index.html" || fileName === "manifest.json" || fileName === "sw.js"
+      ? "no-cache"
+      : "public, max-age=31536000, immutable";
+
   response.writeHead(200, {
     "content-type": mimeTypes[extname(target)] ?? "application/octet-stream",
-    "cache-control": target.endsWith("index.html") ? "no-cache" : "public, max-age=31536000, immutable"
+    "cache-control": cacheControl
   });
 
   createReadStream(target).pipe(response);
