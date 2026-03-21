@@ -13,7 +13,7 @@ import {
   type ServerToClientMessage
 } from "@tv-control/protocol";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
-import { normalizeNetflixUrl } from "./netflix.js";
+import { fetchNetflixMetadata, parseNetflixReference } from "./netflix.js";
 
 const host = process.env.HOST ?? "0.0.0.0";
 const port = Number(process.env.PORT ?? 8787);
@@ -37,6 +37,28 @@ const mimeTypes: Record<string, string> = {
 let extensionClient: RegisteredSocket | null = null;
 const remoteClients = new Set<RegisteredSocket>();
 let latestPlayback: PlaybackState | null = null;
+const titleCache = new Map<string, string>();
+
+function titleForPlayback(playback: PlaybackState | null): PlaybackState | null {
+  if (!playback?.url) {
+    return playback;
+  }
+
+  const reference = parseNetflixReference(playback.url);
+  if (!reference) {
+    return playback;
+  }
+
+  const cachedTitle = titleCache.get(reference.id);
+  if (!cachedTitle) {
+    return playback;
+  }
+
+  return {
+    ...playback,
+    title: cachedTitle
+  };
+}
 
 function sendMessage(socket: WebSocket, message: ServerToClientMessage): void {
   if (socket.readyState === WebSocket.OPEN) {
@@ -48,7 +70,7 @@ function currentSnapshot(): ServerToClientMessage {
   return stateSnapshotMessageSchema.parse({
     type: "state_snapshot",
     extensionConnected: extensionClient?.readyState === WebSocket.OPEN,
-    playback: latestPlayback
+    playback: titleForPlayback(latestPlayback)
   });
 }
 
@@ -61,6 +83,29 @@ function broadcastSnapshot(): void {
 
 function sendError(socket: WebSocket, message: string): void {
   sendMessage(socket, errorMessageSchema.parse({ type: "error", message }));
+}
+
+async function cacheNetflixTitle(url: string): Promise<void> {
+  const reference = parseNetflixReference(url);
+  if (!reference || titleCache.has(reference.id)) {
+    return;
+  }
+
+  const metadata = await fetchNetflixMetadata(reference);
+  if (metadata.title) {
+    titleCache.set(reference.id, metadata.title);
+  }
+}
+
+function refreshPlaybackTitleFromUrl(playback: PlaybackState | null): void {
+  if (!playback?.url) {
+    return;
+  }
+
+  void cacheNetflixTitle(playback.url).then(() => {
+    latestPlayback = titleForPlayback(latestPlayback);
+    broadcastSnapshot();
+  });
 }
 
 async function serveRemoteUi(pathname: string, response: ServerResponse): Promise<void> {
@@ -115,7 +160,7 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
     socket.isAlive = true;
   });
 
-  socket.on("message", (rawData: RawData) => {
+  socket.on("message", async (rawData: RawData) => {
     let payload: unknown;
 
     try {
@@ -168,17 +213,22 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           return;
         }
 
-        const normalizedUrl = normalizeNetflixUrl(message.url);
-        if (!normalizedUrl) {
+        const reference = parseNetflixReference(message.url);
+        if (!reference) {
           sendError(socket, "Only Netflix watch, title, or supported share URLs are accepted.");
           return;
         }
+
+        void cacheNetflixTitle(reference.watchUrl).then(() => {
+          latestPlayback = titleForPlayback(latestPlayback);
+          broadcastSnapshot();
+        });
 
         sendMessage(
           extensionClient,
           {
             type: "open_url",
-            url: normalizedUrl
+            url: reference.watchUrl
           }
         );
         sendMessage(socket, {
@@ -220,8 +270,12 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           return;
         }
 
-        latestPlayback = message.playback;
+        latestPlayback = titleForPlayback({
+          ...message.playback,
+          title: undefined
+        });
         broadcastSnapshot();
+        refreshPlaybackTitleFromUrl(latestPlayback);
         break;
       }
     }

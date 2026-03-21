@@ -16,16 +16,6 @@ function isWatchPage(): boolean {
   return WATCH_PATH_PATTERN.test(location.pathname);
 }
 
-function extractTitle(): string | undefined {
-  const heading = document.querySelector<HTMLElement>("h4, h3, .video-title, .title-logo")?.innerText?.trim();
-  if (heading) {
-    return heading;
-  }
-
-  const title = document.title.replace(/\s*-\s*Netflix$/i, "").trim();
-  return title || undefined;
-}
-
 function computePlaybackStatus(video: HTMLVideoElement | null): PlaybackStatus {
   if (!isWatchPage()) {
     return "idle";
@@ -53,7 +43,7 @@ function playbackDetails(video: HTMLVideoElement | null): PlaybackDetails {
   }
 
   return {
-    title: extractTitle(),
+    title: undefined,
     currentTime: video?.currentTime,
     duration: Number.isFinite(video?.duration) ? video?.duration : undefined,
     url: location.href
