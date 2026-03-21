@@ -6,9 +6,15 @@ type IncomingCommandMessage = {
   command: "play" | "pause";
 };
 
+const WATCH_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?watch\//;
+
 let attachedVideo: HTMLVideoElement | null = null;
 let lastHref = location.href;
 let lastSentAt = 0;
+
+function isWatchPage(): boolean {
+  return WATCH_PATH_PATTERN.test(location.pathname);
+}
 
 function extractTitle(): string | undefined {
   const heading = document.querySelector<HTMLElement>("h4, h3, .video-title, .title-logo")?.innerText?.trim();
@@ -21,6 +27,10 @@ function extractTitle(): string | undefined {
 }
 
 function computePlaybackStatus(video: HTMLVideoElement | null): PlaybackStatus {
+  if (!isWatchPage()) {
+    return "idle";
+  }
+
   if (!video) {
     return document.readyState === "complete" ? "idle" : "loading";
   }
@@ -33,6 +43,15 @@ function computePlaybackStatus(video: HTMLVideoElement | null): PlaybackStatus {
 }
 
 function playbackDetails(video: HTMLVideoElement | null): PlaybackDetails {
+  if (!isWatchPage()) {
+    return {
+      title: undefined,
+      currentTime: undefined,
+      duration: undefined,
+      url: undefined
+    };
+  }
+
   return {
     title: extractTitle(),
     currentTime: video?.currentTime,
@@ -49,7 +68,7 @@ function sendPlayback(force = false): void {
 
   const playback: PlaybackState = {
     status: computePlaybackStatus(attachedVideo),
-    controllable: attachedVideo !== null,
+    controllable: isWatchPage() && attachedVideo !== null,
     ...playbackDetails(attachedVideo),
     updatedAt: now
   };
@@ -91,6 +110,12 @@ async function applyPlaybackCommand(command: "play" | "pause"): Promise<void> {
 }
 
 function locateVideo(): void {
+  if (!isWatchPage()) {
+    attachedVideo = null;
+    sendPlayback(true);
+    return;
+  }
+
   const video = document.querySelector("video");
   if (video instanceof HTMLVideoElement) {
     attachVideo(video);

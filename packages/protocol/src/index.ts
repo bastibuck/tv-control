@@ -66,6 +66,10 @@ export const openUrlMessageSchema = z.object({
   url: z.string().url()
 });
 
+export const openNetflixUrlAcceptedMessageSchema = z.object({
+  type: z.literal("open_netflix_url_accepted")
+});
+
 export const executePlaybackCommandMessageSchema = z.object({
   type: z.literal("execute_playback_command"),
   command: z.enum(["play", "pause"])
@@ -85,6 +89,7 @@ export const errorMessageSchema = z.object({
 export const serverToClientMessageSchema = z.discriminatedUnion("type", [
   helloAckMessageSchema,
   openUrlMessageSchema,
+  openNetflixUrlAcceptedMessageSchema,
   executePlaybackCommandMessageSchema,
   stateSnapshotMessageSchema,
   errorMessageSchema

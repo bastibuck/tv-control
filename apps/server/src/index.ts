@@ -181,6 +181,9 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
             url: normalizedUrl
           }
         );
+        sendMessage(socket, {
+          type: "open_netflix_url_accepted"
+        });
         break;
       }
 
