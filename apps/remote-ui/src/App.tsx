@@ -8,40 +8,21 @@ import {
 
 type ConnectionState = "connecting" | "connected" | "disconnected";
 
-function formatRuntime(seconds?: number): string {
+function formatClock(seconds?: number): string {
   if (seconds === undefined || Number.isNaN(seconds)) {
-    return "Runtime unknown";
+    return "--:--";
   }
 
-  const totalMinutes = Math.max(1, Math.round(seconds / 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
 
-  if (hours === 0) {
-    return `${minutes}m total`;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   }
 
-  if (minutes === 0) {
-    return `${hours}h total`;
-  }
-
-  return `${hours}h ${minutes}m total`;
-}
-
-function formatProgressTime(seconds?: number): string {
-  if (seconds === undefined || Number.isNaN(seconds)) {
-    return "--";
-  }
-
-  const totalMinutes = Math.max(0, Math.round(seconds / 60));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}m in`;
-  }
-
-  return `${hours}h ${minutes}m in`;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function playbackLabel(playback: PlaybackState | null): string {
@@ -114,6 +95,7 @@ export function App(): ReactElement {
   const [socketState, setSocketState] = useState<ConnectionState>("connecting");
   const [extensionConnected, setExtensionConnected] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState | null>(null);
+  const [displayCurrentTime, setDisplayCurrentTime] = useState<number | undefined>(undefined);
   const [netflixUrl, setNetflixUrl] = useState("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [reconnectVersion, setReconnectVersion] = useState(0);
@@ -206,13 +188,39 @@ export function App(): ReactElement {
     };
   }, [reconnectVersion]);
 
+  useEffect(() => {
+    if (!playback) {
+      setDisplayCurrentTime(undefined);
+      return;
+    }
+
+    setDisplayCurrentTime(playback.currentTime);
+
+    if (playback.status !== "playing" || playback.currentTime === undefined) {
+      return;
+    }
+
+    const startedAt = window.performance.now();
+    const baseTime = playback.currentTime;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = (window.performance.now() - startedAt) / 1000;
+      const nextTime = baseTime + elapsedSeconds;
+      const cappedTime = playback.duration === undefined ? nextTime : Math.min(nextTime, playback.duration);
+      setDisplayCurrentTime(cappedTime);
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [playback]);
+
   const progress = useMemo(() => {
-    if (playback?.duration === undefined || playback.currentTime === undefined || playback.duration <= 0) {
+    if (playback?.duration === undefined || displayCurrentTime === undefined || playback.duration <= 0) {
       return 0;
     }
 
-    return Math.min(100, (playback.currentTime / playback.duration) * 100);
-  }, [playback]);
+    return Math.min(100, (displayCurrentTime / playback.duration) * 100);
+  }, [displayCurrentTime, playback]);
 
   const mode = transportMode(playback);
   const transportDisabled =
@@ -344,8 +352,8 @@ export function App(): ReactElement {
         </div>
 
         <div className="time-row">
-          <span>{formatProgressTime(playback?.currentTime)}</span>
-          <span>{formatRuntime(playback?.duration)}</span>
+          <span>{formatClock(displayCurrentTime)}</span>
+          <span>{formatClock(playback?.duration)}</span>
         </div>
 
         {!playback?.controllable && playback !== null ? (
