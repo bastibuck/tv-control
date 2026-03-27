@@ -6,6 +6,9 @@ export type ClientRole = z.infer<typeof clientRoleSchema>;
 export const playbackStatusSchema = z.enum(["idle", "loading", "playing", "paused"]);
 export type PlaybackStatus = z.infer<typeof playbackStatusSchema>;
 
+export const playbackCommandSchema = z.enum(["play", "pause", "seek_back_10", "seek_forward_10"]);
+export type PlaybackCommand = z.infer<typeof playbackCommandSchema>;
+
 export const playbackStateSchema = z.object({
   status: playbackStatusSchema,
   controllable: z.boolean(),
@@ -38,7 +41,7 @@ export const heartbeatMessageSchema = z.object({
 
 export const playbackCommandMessageSchema = z.object({
   type: z.literal("playback_command"),
-  command: z.enum(["play", "pause"])
+  command: playbackCommandSchema
 });
 
 export const playbackStateMessageSchema = z.object({
@@ -72,7 +75,7 @@ export const openNetflixUrlAcceptedMessageSchema = z.object({
 
 export const executePlaybackCommandMessageSchema = z.object({
   type: z.literal("execute_playback_command"),
-  command: z.enum(["play", "pause"])
+  command: playbackCommandSchema
 });
 
 export const stateSnapshotMessageSchema = z.object({

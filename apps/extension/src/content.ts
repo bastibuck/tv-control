@@ -1,9 +1,9 @@
-import type { PlaybackState, PlaybackStatus } from "@tv-control/protocol";
+import type { PlaybackCommand, PlaybackState, PlaybackStatus } from "@tv-control/protocol";
 
 type PlaybackDetails = Pick<PlaybackState, "title" | "currentTime" | "duration" | "url">;
 type IncomingCommandMessage = {
   type: "playback_command";
-  command: "play" | "pause";
+  command: PlaybackCommand;
 };
 
 const WATCH_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?watch\//;
@@ -81,19 +81,47 @@ function attachVideo(video: HTMLVideoElement): void {
   sendPlayback(true);
 }
 
-async function applyPlaybackCommand(command: "play" | "pause"): Promise<void> {
-  if (!attachedVideo) {
-    locateVideo();
+function dispatchNetflixKey(key: "ArrowLeft" | "ArrowRight"): void {
+  const activeTarget = document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
+  for (const type of ["keydown", "keyup"] as const) {
+    activeTarget.dispatchEvent(
+      new KeyboardEvent(type, {
+        key,
+        code: key,
+        bubbles: true,
+        cancelable: true
+      })
+    );
   }
+}
 
+function seekBy(seconds: number): void {
   if (!attachedVideo) {
     return;
   }
 
+  attachedVideo.currentTime = Math.max(0, Math.min(attachedVideo.duration || Number.MAX_SAFE_INTEGER, attachedVideo.currentTime + seconds));
+}
+
+async function applyPlaybackCommand(command: PlaybackCommand): Promise<void> {
+  if (!attachedVideo) {
+    locateVideo();
+  }
+
+  if (!attachedVideo && command !== "seek_back_10" && command !== "seek_forward_10") {
+    return;
+  }
+
   if (command === "play") {
-    await attachedVideo.play().catch(() => undefined);
+    await attachedVideo?.play().catch(() => undefined);
+  } else if (command === "pause") {
+    attachedVideo?.pause();
+  } else if (command === "seek_back_10") {
+    seekBy(-10);
+    dispatchNetflixKey("ArrowLeft");
   } else {
-    attachedVideo.pause();
+    seekBy(10);
+    dispatchNetflixKey("ArrowRight");
   }
 
   sendPlayback(true);

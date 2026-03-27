@@ -284,6 +284,31 @@ input {
   font-weight: 800;
 }
 
+.transport-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 0.72rem;
+  align-items: stretch;
+}
+
+.seek-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5.8rem;
+  padding: 0.9rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.seek-button:disabled {
+  opacity: 0.35;
+}
+
 .transport-icon {
   display: inline-flex;
   gap: 0.35rem;
@@ -336,5 +361,10 @@ input {
 
   .launch-form button {
     width: 100%;
+  }
+
+  .transport-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 0.55rem;
   }
 }

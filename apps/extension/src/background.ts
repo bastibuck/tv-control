@@ -1,4 +1,9 @@
-import { clientToServerMessageSchema, serverToClientMessageSchema, type PlaybackState } from "@tv-control/protocol";
+import {
+  clientToServerMessageSchema,
+  serverToClientMessageSchema,
+  type PlaybackCommand,
+  type PlaybackState
+} from "@tv-control/protocol";
 import { NETFLIX_URL_PATTERN, RECONNECT_DELAY_MS, SERVER_WS_URL } from "./config";
 
 type ContentMessage = {
@@ -8,7 +13,7 @@ type ContentMessage = {
 
 type BackgroundToContentMessage = {
   type: "playback_command";
-  command: "play" | "pause";
+  command: PlaybackCommand;
 };
 
 const HEARTBEAT_INTERVAL_MS = 20000;
@@ -45,9 +50,59 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
   await chrome.tabs.create({ url, active: true });
 }
 
-async function dispatchPlaybackCommand(command: "play" | "pause"): Promise<void> {
+async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> {
   const netflixTab = await findNetflixTab();
   if (netflixTab?.id === undefined) {
+    return;
+  }
+
+  if (command === "seek_back_10" || command === "seek_forward_10") {
+    const deltaSeconds = command === "seek_back_10" ? -10 : 10;
+    await chrome.scripting.executeScript({
+      target: { tabId: netflixTab.id },
+      world: "MAIN",
+      args: [deltaSeconds],
+      func: (seconds: number) => {
+        const globalObject = window as typeof window & {
+          netflix?: {
+            appContext?: {
+              state?: {
+                playerApp?: {
+                  getAPI?: () => {
+                    videoPlayer?: {
+                      getAllPlayerSessionIds?: () => string[];
+                      getVideoPlayerBySessionId?: (sessionId: string) => {
+                        seek?: (timeMs: number) => void;
+                        getCurrentTime?: () => number;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
+        };
+
+        try {
+          const videoApi = globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+          const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
+          const player = sessionId ? videoApi?.getVideoPlayerBySessionId?.(sessionId) : undefined;
+          const currentTimeMs = player?.getCurrentTime?.();
+          if (player?.seek && typeof currentTimeMs === "number") {
+            player.seek(Math.max(0, currentTimeMs + seconds * 1000));
+            return;
+          }
+        } catch {
+          // Fall back to the content script path below.
+        }
+
+        const video = document.querySelector("video");
+        if (video instanceof HTMLVideoElement) {
+          const duration = Number.isFinite(video.duration) ? video.duration : Number.MAX_SAFE_INTEGER;
+          video.currentTime = Math.max(0, Math.min(duration, video.currentTime + seconds));
+        }
+      }
+    });
     return;
   }
 

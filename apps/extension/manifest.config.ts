@@ -5,7 +5,7 @@ export default defineManifest({
   name: "TV Control Netflix Bridge",
   version: "0.1.0",
   description: "Listens for TV control commands and opens Netflix in Chrome.",
-  permissions: ["tabs", "storage"],
+  permissions: ["tabs", "storage", "scripting"],
   host_permissions: ["https://www.netflix.com/*"],
   background: {
     service_worker: "src/background.ts",

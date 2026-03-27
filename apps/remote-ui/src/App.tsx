@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   serverToClientMessageSchema,
+  type PlaybackCommand,
   type PlaybackState,
   type ServerToClientMessage
 } from "@tv-control/protocol";
@@ -90,6 +91,10 @@ function transportMode(playback: PlaybackState | null): "play" | "pause" {
 
 function transportLabel(playback: PlaybackState | null): string {
   return transportMode(playback) === "pause" ? "Pause" : "Play";
+}
+
+function seekLabel(command: PlaybackCommand): string {
+  return command === "seek_back_10" ? "-10s" : "+10s";
 }
 
 function TransportIcon({ mode }: { mode: "play" | "pause" }): ReactElement {
@@ -247,6 +252,18 @@ export function App(): ReactElement {
     socket.send(JSON.stringify({ type: "playback_command", command: mode }));
   }
 
+  function handleSeek(command: PlaybackCommand): void {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    if (!extensionConnected || !playback?.controllable) {
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "playback_command", command }));
+  }
+
   return (
     <main className="app-shell">
       <section className="hero-card">
@@ -292,10 +309,35 @@ export function App(): ReactElement {
           <p className="section-copy">{playbackLabel(playback)}</p>
         </div>
 
-        <button className="transport-button" type="button" onClick={handleTransport} disabled={transportDisabled}>
-          <TransportIcon mode={mode} />
-          <span>{transportLabel(playback)}</span>
-        </button>
+        <div className="transport-row">
+          <button
+            className="seek-button"
+            type="button"
+            onClick={() => handleSeek("seek_back_10")}
+            disabled={transportDisabled}
+          >
+            <span>{seekLabel("seek_back_10")}</span>
+          </button>
+
+          <button
+            className="transport-button"
+            type="button"
+            onClick={handleTransport}
+            disabled={transportDisabled}
+            aria-label={transportLabel(playback)}
+          >
+            <TransportIcon mode={mode} />
+          </button>
+
+          <button
+            className="seek-button"
+            type="button"
+            onClick={() => handleSeek("seek_forward_10")}
+            disabled={transportDisabled}
+          >
+            <span>{seekLabel("seek_forward_10")}</span>
+          </button>
+        </div>
 
         <div className="progress-shell" aria-hidden="true">
           <div className="progress-bar" style={{ width: `${progress}%` }} />
