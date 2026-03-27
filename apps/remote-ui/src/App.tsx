@@ -265,12 +265,10 @@ export function App(): ReactElement {
           </button>
         </div>
 
-        <p className="hero-kicker">TV control</p>
-        <h1>Netflix remote</h1>
+        <p className="hero-kicker">Netflix remote</p>
         <p className="hero-copy">{statusLine(playback, extensionConnected)}</p>
 
         <form className="launch-form" onSubmit={handleSubmit}>
-          <label htmlFor="netflix-url">New Netflix link</label>
           <div className="launch-bar">
             <input
               id="netflix-url"
