@@ -25,11 +25,15 @@ function computePlaybackStatus(video: HTMLVideoElement | null): PlaybackStatus {
     return document.readyState === "complete" ? "idle" : "loading";
   }
 
+   if (video.paused) {
+    return "paused";
+  }
+
   if (video.readyState < 2) {
     return "loading";
   }
 
-  return video.paused ? "paused" : "playing";
+  return "playing";
 }
 
 function playbackDetails(video: HTMLVideoElement | null): PlaybackDetails {
