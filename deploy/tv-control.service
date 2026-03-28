@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=bastibuck
-WorkingDirectory=%h/dev/tv-control
+WorkingDirectory=/home/bastibuck/dev/tv-control
 ExecStart=/usr/bin/env pnpm start
 Restart=always
 RestartSec=5

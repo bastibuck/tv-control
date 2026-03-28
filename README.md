@@ -71,9 +71,10 @@ If you want the server to keep running after you disconnect from SSH, install it
 
 This repo includes an example unit file at `deploy/tv-control.service`.
 
-- `WorkingDirectory=%h/dev/tv-control` tells `systemd` to run the app from `~/dev/tv-control`
-- `User=bastibuck` makes `%h` resolve to `/home/bastibuck`
+- `WorkingDirectory=/home/bastibuck/dev/tv-control` points `systemd` at the checked-out repo
+- `User=bastibuck` runs the service as your normal server user
 - `ExecStart=/usr/bin/env pnpm start` runs the root `start` script from the workspace
+- Use the full absolute path for `WorkingDirectory` in a system service so startup is explicit and easier to debug
 
 ### Install The Service
 
