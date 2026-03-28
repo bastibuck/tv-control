@@ -73,9 +73,10 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 
 - `WorkingDirectory=/home/bastibuck/dev/tv-control` points `systemd` at the checked-out repo
 - `User=bastibuck` runs the service as your normal server user
-- `ExecStart=/usr/bin/env node apps/server/dist/index.js` starts the built server directly
+- `ExecStart=/home/bastibuck/.volta/bin/node apps/server/dist/index.js` starts the built server with your Volta-managed Node binary
 - Use the full absolute path for `WorkingDirectory` in a system service so startup is explicit and easier to debug
 - The service starts the built output directly so it does not depend on `pnpm` being available in the `systemd` environment
+- `systemd` does not inherit your interactive shell PATH, so tools installed through Volta, nvm, or shell init usually need absolute paths
 
 ### Install The Service
 

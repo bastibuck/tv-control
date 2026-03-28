@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=bastibuck
 WorkingDirectory=/home/bastibuck/dev/tv-control
-ExecStart=/usr/bin/env node apps/server/dist/index.js
+ExecStart=/home/bastibuck/.volta/bin/node apps/server/dist/index.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
