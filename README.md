@@ -147,6 +147,63 @@ Restart the service:
 sudo systemctl restart tv-control
 ```
 
+### Deploy A New Feature Or Code Change
+
+When you change the code, use this flow on the server:
+
+1. Open the repo:
+
+   ```bash
+   cd ~/dev/tv-control
+   ```
+
+2. Pull the latest changes:
+
+   ```bash
+   git pull
+   ```
+
+3. If dependencies changed, install them:
+
+   ```bash
+   pnpm install
+   ```
+
+4. Rebuild the project so the server uses the latest compiled output:
+
+   ```bash
+   pnpm build
+   ```
+
+5. Restart the service:
+
+   ```bash
+   sudo systemctl restart tv-control
+   ```
+
+6. Confirm it started correctly:
+
+   ```bash
+   sudo systemctl status tv-control
+   journalctl -u tv-control -f
+   ```
+
+Short version:
+
+```bash
+cd ~/dev/tv-control
+git pull
+pnpm install
+pnpm build
+sudo systemctl restart tv-control
+sudo systemctl status tv-control
+```
+
+Notes:
+
+- You only need `pnpm install` if `package.json` or `pnpm-lock.yaml` changed, but it is safe to run it every time.
+- If you changed the `systemd` unit file itself, copy it again and run `sudo systemctl daemon-reload` before restarting.
+
 ### Stop The Service
 
 ```bash
