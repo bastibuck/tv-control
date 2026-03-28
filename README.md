@@ -64,3 +64,110 @@ pnpm start
 ```
 
 If you change code later, run `pnpm build` again and restart `pnpm start` so the server uses the latest output.
+
+## Run As A systemd Service
+
+If you want the server to keep running after you disconnect from SSH, install it as a `systemd` service.
+
+This repo includes an example unit file at `deploy/tv-control.service`.
+
+- `WorkingDirectory=%h/dev/tv-control` tells `systemd` to run the app from `~/dev/tv-control`
+- `User=bastibuck` makes `%h` resolve to `/home/bastibuck`
+- `ExecStart=/usr/bin/env pnpm start` runs the root `start` script from the workspace
+
+### Install The Service
+
+1. Copy the repo to your server at `~/dev/tv-control`.
+2. Install dependencies:
+
+   ```bash
+   cd ~/dev/tv-control
+   pnpm install
+   ```
+
+3. Build the app:
+
+   ```bash
+   pnpm build
+   ```
+
+4. Copy the service file into `systemd`:
+
+   ```bash
+   sudo cp deploy/tv-control.service /etc/systemd/system/tv-control.service
+   ```
+
+5. Reload `systemd`:
+
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+6. Enable the service so it starts on boot:
+
+   ```bash
+   sudo systemctl enable tv-control
+   ```
+
+### Start The Service
+
+```bash
+sudo systemctl start tv-control
+```
+
+### Check If It Is Running
+
+Show current status:
+
+```bash
+sudo systemctl status tv-control
+```
+
+Follow the live logs:
+
+```bash
+journalctl -u tv-control -f
+```
+
+### Restart After Code Changes
+
+Rebuild the app:
+
+```bash
+cd ~/dev/tv-control
+pnpm build
+```
+
+Restart the service:
+
+```bash
+sudo systemctl restart tv-control
+```
+
+### Stop The Service
+
+```bash
+sudo systemctl stop tv-control
+```
+
+### Remove The Service Again
+
+Stop it and disable it:
+
+```bash
+sudo systemctl stop tv-control
+sudo systemctl disable tv-control
+```
+
+Delete the unit file and reload `systemd`:
+
+```bash
+sudo rm /etc/systemd/system/tv-control.service
+sudo systemctl daemon-reload
+```
+
+Reset any failed-state metadata if needed:
+
+```bash
+sudo systemctl reset-failed tv-control
+```

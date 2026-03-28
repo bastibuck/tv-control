@@ -1,0 +1,15 @@
+[Unit]
+Description=tv-control server
+After=network.target
+
+[Service]
+Type=simple
+User=bastibuck
+WorkingDirectory=%h/dev/tv-control
+ExecStart=/usr/bin/env pnpm start
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
