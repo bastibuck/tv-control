@@ -18,7 +18,7 @@ Local-network Netflix launcher made of three parts:
 1. Install dependencies:
 
    ```bash
-   pnpm install
+   pnpm install --frozen-lockfile
    ```
 
 2. Build everything:
@@ -58,7 +58,7 @@ Local-network Netflix launcher made of three parts:
 Use this flow when you want to run the app on your local network in a production-style setup:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 pnpm start
 ```
@@ -85,7 +85,7 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 
    ```bash
    cd ~/dev/tv-control
-   pnpm install
+   pnpm install --frozen-lockfile
    ```
 
 3. Build the app:
@@ -166,7 +166,7 @@ When you change the code, use this flow on the server:
 3. If dependencies changed, install them:
 
    ```bash
-   pnpm install
+   pnpm install --frozen-lockfile
    ```
 
 4. Rebuild the project so the server uses the latest compiled output:
@@ -193,7 +193,7 @@ Short version:
 ```bash
 cd ~/dev/tv-control
 git pull
-pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 sudo systemctl restart tv-control
 sudo systemctl status tv-control
@@ -201,7 +201,8 @@ sudo systemctl status tv-control
 
 Notes:
 
-- You only need `pnpm install` if `package.json` or `pnpm-lock.yaml` changed, but it is safe to run it every time.
+- Use `pnpm install --frozen-lockfile` to install the exact versions committed in `pnpm-lock.yaml`.
+- If you intentionally change dependencies, run `pnpm install` or `pnpm up`, review the resulting `pnpm-lock.yaml`, and commit it with the manifest changes.
 - If you changed the `systemd` unit file itself, copy it again and run `sudo systemctl daemon-reload` before restarting.
 
 ### Stop The Service
