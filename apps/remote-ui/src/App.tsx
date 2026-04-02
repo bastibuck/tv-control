@@ -230,6 +230,7 @@ export function App(): ReactElement {
     (mode === "play" && playback.status !== "paused") ||
     (mode === "pause" && playback.status !== "playing" && playback.status !== "loading");
   const playbackActive = playback !== null && (playback.status === "playing" || playback.status === "paused" || playback.status === "loading");
+  const reloadDisabled = socketState !== "connected" || !extensionConnected;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -270,6 +271,14 @@ export function App(): ReactElement {
     }
 
     socket.send(JSON.stringify({ type: "playback_command", command }));
+  }
+
+  function handleReload(): void {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !extensionConnected) {
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "playback_command", command: "reload" }));
   }
 
   return (
@@ -359,6 +368,10 @@ export function App(): ReactElement {
         {!playback?.controllable && playback !== null ? (
           <p className="hint-copy">The Netflix player is visible, but not ready for commands yet.</p>
         ) : null}
+
+        <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
+          Reload Netflix Tab
+        </button>
       </section>
     </main>
   );

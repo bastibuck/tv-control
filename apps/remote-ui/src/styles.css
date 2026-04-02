@@ -309,6 +309,21 @@ input {
   opacity: 0.35;
 }
 
+.reload-button {
+  justify-self: center;
+  padding: 0.72rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(245, 241, 234, 0.72);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.reload-button:disabled {
+  opacity: 0.35;
+}
+
 .transport-icon {
   display: inline-flex;
   gap: 0.35rem;

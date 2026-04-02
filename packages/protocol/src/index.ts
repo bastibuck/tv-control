@@ -6,7 +6,7 @@ export type ClientRole = z.infer<typeof clientRoleSchema>;
 export const playbackStatusSchema = z.enum(["idle", "loading", "playing", "paused"]);
 export type PlaybackStatus = z.infer<typeof playbackStatusSchema>;
 
-export const playbackCommandSchema = z.enum(["play", "pause", "seek_back_10", "seek_forward_10"]);
+export const playbackCommandSchema = z.enum(["play", "pause", "seek_back_10", "seek_forward_10", "reload"]);
 export type PlaybackCommand = z.infer<typeof playbackCommandSchema>;
 
 export const playbackStateSchema = z.object({

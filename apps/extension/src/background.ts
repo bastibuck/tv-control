@@ -56,6 +56,11 @@ async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> 
     return;
   }
 
+  if (command === "reload") {
+    await chrome.tabs.reload(netflixTab.id);
+    return;
+  }
+
   if (command === "seek_back_10" || command === "seek_forward_10") {
     const deltaSeconds = command === "seek_back_10" ? -10 : 10;
     await chrome.scripting.executeScript({
