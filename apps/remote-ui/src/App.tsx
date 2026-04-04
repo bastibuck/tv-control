@@ -327,14 +327,6 @@ export function App(): ReactElement {
               Send
             </button>
           </div>
-          <button
-            className="open-netflix-button"
-            type="button"
-            onClick={handleOpenNetflix}
-            disabled={socketState !== "connected" || !extensionConnected}
-          >
-            Open Netflix
-          </button>
         </form>
       </section>
 
@@ -388,9 +380,14 @@ export function App(): ReactElement {
           <p className="hint-copy">The Netflix player is visible, but not ready for commands yet.</p>
         ) : null}
 
-        <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
-          Reload Netflix Tab
-        </button>
+        <div className="action-row">
+          <button className="reload-button" type="button" onClick={handleOpenNetflix} disabled={reloadDisabled}>
+            Open Netflix
+          </button>
+          <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
+            Reload Netflix Tab
+          </button>
+        </div>
       </section>
     </main>
   );
