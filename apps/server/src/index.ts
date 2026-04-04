@@ -209,6 +209,25 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         break;
       }
 
+      case "open_netflix": {
+        if (socket.role !== "remote-ui") {
+          sendError(socket, "Only remote UI clients can open Netflix.");
+          return;
+        }
+
+        if (!extensionClient || extensionClient.readyState !== WebSocket.OPEN) {
+          sendError(socket, "No extension client is currently connected.");
+          return;
+        }
+
+        sendMessage(extensionClient, {
+          type: "open_url",
+          url: "https://www.netflix.com"
+        });
+        sendMessage(socket, { type: "open_netflix_accepted" });
+        break;
+      }
+
       case "open_netflix_url": {
         if (socket.role !== "remote-ui") {
           sendError(socket, "Only remote UI clients can open Netflix URLs.");

@@ -169,6 +169,9 @@ export function App(): ReactElement {
         case "open_netflix_url_accepted":
           setNetflixUrl("");
           break;
+        case "open_netflix_accepted":
+          // No state update needed; the button is a fire-and-forget action.
+          break;
         case "error":
         case "open_url":
         case "execute_playback_command":
@@ -281,6 +284,14 @@ export function App(): ReactElement {
     socket.send(JSON.stringify({ type: "playback_command", command: "reload" }));
   }
 
+  function handleOpenNetflix(): void {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !extensionConnected) {
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "open_netflix" }));
+  }
+
   return (
     <main className="app-shell">
       <section className="hero-card">
@@ -316,6 +327,14 @@ export function App(): ReactElement {
               Send
             </button>
           </div>
+          <button
+            className="open-netflix-button"
+            type="button"
+            onClick={handleOpenNetflix}
+            disabled={socketState !== "connected" || !extensionConnected}
+          >
+            Open Netflix
+          </button>
         </form>
       </section>
 

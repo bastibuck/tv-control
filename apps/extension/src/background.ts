@@ -41,13 +41,16 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
     await chrome.tabs.update(existingTab.id, { active: true, url });
 
     if (existingTab.windowId !== undefined) {
-      await chrome.windows.update(existingTab.windowId, { focused: true });
+      await chrome.windows.update(existingTab.windowId, { focused: true, state: "fullscreen" });
     }
 
     return;
   }
 
-  await chrome.tabs.create({ url, active: true });
+  const newTab = await chrome.tabs.create({ url, active: true });
+  if (newTab.windowId !== undefined) {
+    await chrome.windows.update(newTab.windowId, { state: "fullscreen" });
+  }
 }
 
 async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> {

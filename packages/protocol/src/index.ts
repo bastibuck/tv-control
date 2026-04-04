@@ -31,6 +31,10 @@ export const openNetflixUrlMessageSchema = z.object({
   url: z.string().url()
 });
 
+export const openNetflixMessageSchema = z.object({
+  type: z.literal("open_netflix")
+});
+
 export const requestStateMessageSchema = z.object({
   type: z.literal("request_state")
 });
@@ -52,6 +56,7 @@ export const playbackStateMessageSchema = z.object({
 export const clientToServerMessageSchema = z.discriminatedUnion("type", [
   helloMessageSchema,
   openNetflixUrlMessageSchema,
+  openNetflixMessageSchema,
   requestStateMessageSchema,
   heartbeatMessageSchema,
   playbackCommandMessageSchema,
@@ -71,6 +76,10 @@ export const openUrlMessageSchema = z.object({
 
 export const openNetflixUrlAcceptedMessageSchema = z.object({
   type: z.literal("open_netflix_url_accepted")
+});
+
+export const openNetflixAcceptedMessageSchema = z.object({
+  type: z.literal("open_netflix_accepted")
 });
 
 export const executePlaybackCommandMessageSchema = z.object({
@@ -93,6 +102,7 @@ export const serverToClientMessageSchema = z.discriminatedUnion("type", [
   helloAckMessageSchema,
   openUrlMessageSchema,
   openNetflixUrlAcceptedMessageSchema,
+  openNetflixAcceptedMessageSchema,
   executePlaybackCommandMessageSchema,
   stateSnapshotMessageSchema,
   errorMessageSchema
