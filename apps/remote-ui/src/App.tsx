@@ -48,7 +48,7 @@ function playbackLabel(playback: PlaybackState | null): string {
 
 function statusLine(playback: PlaybackState | null, extensionConnected: boolean): string {
   if (!extensionConnected) {
-    return "Open Chrome with the Netflix bridge and this remote comes online.";
+    return "Open Netflix to launch Chrome. Controls come online as soon as the bridge connects.";
   }
 
   if (!playback) {
@@ -233,6 +233,7 @@ export function App(): ReactElement {
     (mode === "play" && playback.status !== "paused") ||
     (mode === "pause" && playback.status !== "playing" && playback.status !== "loading");
   const playbackActive = playback !== null && (playback.status === "playing" || playback.status === "paused" || playback.status === "loading");
+  const launchDisabled = socketState !== "connected";
   const reloadDisabled = socketState !== "connected" || !extensionConnected;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -381,7 +382,7 @@ export function App(): ReactElement {
         ) : null}
 
         <div className="action-row">
-          <button className="reload-button" type="button" onClick={handleOpenNetflix} disabled={reloadDisabled}>
+          <button className="reload-button" type="button" onClick={handleOpenNetflix} disabled={launchDisabled}>
             Open Netflix
           </button>
           <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>

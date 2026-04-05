@@ -6,6 +6,8 @@ Local-network Netflix launcher made of three parts:
 - a React remote UI you open from your phone
 - a Chrome extension that opens or reuses a Netflix tab and reports playback state back
 
+The server can also launch Chrome directly when the extension is not already connected.
+
 ## Workspace
 
 - `apps/server` - Node + TypeScript HTTP/WebSocket hub
@@ -35,11 +37,9 @@ Local-network Netflix launcher made of three parts:
 
    `pnpm start` runs the built server from `apps/server/dist`. It does not rebuild files and it does not hot reload.
 
-4. Load the extension in Chrome:
-   - Open `chrome://extensions`
-   - Enable Developer Mode
-   - Click `Load unpacked`
-   - Select `apps/extension/dist`
+4. Build the extension so the server can auto-load it into the TV Control Chrome profile:
+
+   `pnpm build` already writes the built extension to `apps/extension/dist`.
 
 5. Open the remote UI on your phone or another device on the same network:
 
@@ -47,11 +47,25 @@ Local-network Netflix launcher made of three parts:
    http://<server-ip>:8787
    ```
 
+6. Press `Open Netflix` in the remote UI:
+   - If the extension is already connected, it reuses that Chrome session and Netflix tab.
+   - Otherwise the server launches a dedicated Chrome window for TV Control, opens only the requested Netflix page, and tries to auto-load the built extension from `apps/extension/dist`.
+
+7. Optional: manually load the extension in Chrome if you want to use your existing Chrome session instead of the dedicated TV Control window:
+   - Open `chrome://extensions`
+   - Enable Developer Mode
+   - Click `Load unpacked`
+   - Select `apps/extension/dist`
+
 ## Notes
 
 - The extension defaults to `ws://localhost:8787/ws` in `apps/extension/src/config.ts`.
 - If Chrome runs on a different machine than the server, update that value before building.
 - The app supports opening Netflix watch/title/share URLs, showing live playback state, and sending play/pause controls.
+- When the server launches Chrome itself, it uses a dedicated profile at `.tv-control-chrome/` so it does not restore tabs from your normal Chrome profile.
+- That dedicated profile is persistent. If you log into Netflix there once, the login should still be present on later launches.
+- Server-side Chrome launching currently supports macOS and Linux by looking for standard Chrome or Chromium executables.
+- Opening Netflix works without an already-connected extension, but playback controls only appear after the extension bridge connects.
 
 ## Local Network Run
 
