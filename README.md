@@ -165,6 +165,22 @@ sudo systemctl restart tv-control
 
 When you change the code, use this flow on the server:
 
+Quick one-command update:
+
+```bash
+~/dev/tv-control/deploy/update-tv-control.sh
+```
+
+That script:
+
+- pulls the latest commits with `git pull --ff-only`
+- runs `pnpm install --frozen-lockfile`
+- runs `pnpm build`
+- restarts `tv-control`
+- prints the current service status
+
+Manual flow:
+
 1. Open the repo:
 
    ```bash
