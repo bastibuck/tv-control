@@ -213,9 +213,6 @@ async function openChromeUrl(url: string): Promise<void> {
   const candidates = chromeExecutableCandidates();
   for (const command of candidates) {
     try {
-      console.log(
-        `Launching browser: command=${command} WAYLAND_DISPLAY=${process.env.WAYLAND_DISPLAY ?? "<unset>"} XDG_RUNTIME_DIR=${process.env.XDG_RUNTIME_DIR ?? "<unset>"} XDG_SESSION_TYPE=${process.env.XDG_SESSION_TYPE ?? "<unset>"} DISPLAY=${process.env.DISPLAY ?? "<unset>"} args=${args.join(" ")}`
-      );
       await spawnDetached(command, args);
       return;
     } catch (error) {
@@ -326,8 +323,6 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         socket.role = message.role;
         socket.name = message.name;
 
-        console.log(`Client connected: role=${message.role}${message.name ? ` name=${message.name}` : ""}`);
-
         if (message.role === "extension") {
           extensionClient = socket;
         }
@@ -348,8 +343,6 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           return;
         }
 
-        console.log("Received open_netflix request from remote UI");
-
         try {
           await openNetflixInChrome("https://www.netflix.com");
         } catch (error) {
@@ -367,8 +360,6 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           sendError(socket, "Only remote UI clients can open Netflix URLs.");
           return;
         }
-
-        console.log(`Received open_netflix_url request: ${message.url}`);
 
         const reference = parseNetflixReference(message.url);
         if (!reference) {
