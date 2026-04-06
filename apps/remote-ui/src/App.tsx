@@ -48,7 +48,7 @@ function playbackLabel(playback: PlaybackState | null): string {
 
 function statusLine(playback: PlaybackState | null, extensionConnected: boolean): string {
   if (!extensionConnected) {
-    return "Open Chrome with the Netflix bridge and this remote comes online.";
+    return "Open Netflix to launch Chrome. Controls come online as soon as the bridge connects.";
   }
 
   if (!playback) {
@@ -169,6 +169,9 @@ export function App(): ReactElement {
         case "open_netflix_url_accepted":
           setNetflixUrl("");
           break;
+        case "open_netflix_accepted":
+          // No state update needed; the button is a fire-and-forget action.
+          break;
         case "error":
         case "open_url":
         case "execute_playback_command":
@@ -230,6 +233,7 @@ export function App(): ReactElement {
     (mode === "play" && playback.status !== "paused") ||
     (mode === "pause" && playback.status !== "playing" && playback.status !== "loading");
   const playbackActive = playback !== null && (playback.status === "playing" || playback.status === "paused" || playback.status === "loading");
+  const launchDisabled = socketState !== "connected";
   const reloadDisabled = socketState !== "connected" || !extensionConnected;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -279,6 +283,14 @@ export function App(): ReactElement {
     }
 
     socket.send(JSON.stringify({ type: "playback_command", command: "reload" }));
+  }
+
+  function handleOpenNetflix(): void {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: "open_netflix" }));
   }
 
   return (
@@ -369,9 +381,14 @@ export function App(): ReactElement {
           <p className="hint-copy">The Netflix player is visible, but not ready for commands yet.</p>
         ) : null}
 
-        <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
-          Reload Netflix Tab
-        </button>
+        <div className="action-row">
+          <button className="reload-button" type="button" onClick={handleOpenNetflix} disabled={launchDisabled}>
+            Open Netflix
+          </button>
+          <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
+            Reload Netflix Tab
+          </button>
+        </div>
       </section>
     </main>
   );

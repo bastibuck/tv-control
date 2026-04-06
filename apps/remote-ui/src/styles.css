@@ -309,8 +309,14 @@ input {
   opacity: 0.35;
 }
 
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .reload-button {
-  justify-self: center;
   padding: 0.72rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;

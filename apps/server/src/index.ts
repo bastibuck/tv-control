@@ -1,8 +1,9 @@
 import { createReadStream, existsSync } from "node:fs";
-import { stat } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { basename, extname, join, normalize } from "node:path";
+import { spawn } from "node:child_process";
 import {
   clientToServerMessageSchema,
   errorMessageSchema,
@@ -18,6 +19,8 @@ import { fetchNetflixMetadata, parseNetflixReference } from "./netflix.js";
 const host = process.env.HOST ?? "0.0.0.0";
 const port = Number(process.env.PORT ?? 8787);
 const remoteUiDistPath = fileURLToPath(new URL("../../remote-ui/dist", import.meta.url));
+const extensionDistPath = fileURLToPath(new URL("../../extension/dist", import.meta.url));
+const chromeProfilePath = fileURLToPath(new URL("../../../.tv-control-chrome", import.meta.url));
 
 type RegisteredSocket = WebSocket & {
   isAlive?: boolean;
@@ -107,6 +110,130 @@ function refreshPlaybackTitleFromUrl(playback: PlaybackState | null): void {
     latestPlayback = titleForPlayback(latestPlayback);
     broadcastSnapshot();
   });
+}
+
+function chromeExecutableCandidates(): string[] {
+  switch (process.platform) {
+    case "darwin":
+      return ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"];
+    case "linux":
+      return ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+    default:
+      return [];
+  }
+}
+
+async function spawnDetached(command: string, args: string[]): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: ["ignore", "ignore", "pipe"]
+    });
+
+    let settled = false;
+    let stderr = "";
+
+    function cleanup(): void {
+      child.removeAllListeners("error");
+      child.removeAllListeners("spawn");
+      child.removeAllListeners("exit");
+      child.stderr?.removeAllListeners("data");
+      child.stderr?.destroy();
+    }
+
+    function rejectOnce(error: Error): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      reject(error);
+    }
+
+    function resolveOnce(): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      child.unref();
+      resolve();
+    }
+
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      if (stderr.length >= 4000) {
+        return;
+      }
+
+      stderr += chunk.toString();
+    });
+
+    child.once("error", (error) => {
+      rejectOnce(error instanceof Error ? error : new Error(String(error)));
+    });
+
+    child.once("spawn", () => {
+      setTimeout(resolveOnce, 1000);
+    });
+
+    child.once("exit", (code, signal) => {
+      const details = stderr.trim();
+      const suffix = details ? `\n${details}` : "";
+      rejectOnce(new Error(`Process exited early (code=${code ?? "null"}, signal=${signal ?? "null"})${suffix}`));
+    });
+  });
+}
+
+async function openChromeUrl(url: string): Promise<void> {
+  await mkdir(chromeProfilePath, { recursive: true });
+
+  const args = [
+    `--user-data-dir=${chromeProfilePath}`,
+    "--new-window",
+    "--start-fullscreen",
+    "--no-first-run",
+    "--no-default-browser-check"
+  ];
+
+  if (process.platform === "linux" && process.env.WAYLAND_DISPLAY) {
+    args.push("--enable-features=UseOzonePlatform");
+    args.push("--ozone-platform=wayland");
+  }
+
+  if (existsSync(extensionDistPath)) {
+    args.push(`--load-extension=${extensionDistPath}`);
+  }
+
+  args.push(url);
+
+  const failures: string[] = [];
+  const candidates = chromeExecutableCandidates();
+  for (const command of candidates) {
+    try {
+      await spawnDetached(command, args);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${command}: ${message}`);
+    }
+  }
+
+  if (candidates.length === 0) {
+    throw new Error(`Unsupported platform: ${process.platform}`);
+  }
+
+  throw new Error(`Failed to launch Google Chrome. Tried: ${failures.join(" | ")}`);
+}
+
+async function openNetflixInChrome(url: string): Promise<void> {
+  if (extensionClient?.readyState === WebSocket.OPEN) {
+    sendMessage(extensionClient, { type: "open_url", url });
+    return;
+  }
+
+  await openChromeUrl(url);
 }
 
 async function serveRemoteUi(pathname: string, response: ServerResponse): Promise<void> {
@@ -209,14 +336,27 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         break;
       }
 
-      case "open_netflix_url": {
+      case "open_netflix": {
         if (socket.role !== "remote-ui") {
-          sendError(socket, "Only remote UI clients can open Netflix URLs.");
+          sendError(socket, "Only remote UI clients can open Netflix.");
           return;
         }
 
-        if (!extensionClient || extensionClient.readyState !== WebSocket.OPEN) {
-          sendError(socket, "No extension client is currently connected.");
+        try {
+          await openNetflixInChrome("https://www.netflix.com");
+        } catch (error) {
+          console.error("Failed to open Netflix in Chrome", error);
+          sendError(socket, "Failed to open Google Chrome with Netflix.");
+          return;
+        }
+
+        sendMessage(socket, { type: "open_netflix_accepted" });
+        break;
+      }
+
+      case "open_netflix_url": {
+        if (socket.role !== "remote-ui") {
+          sendError(socket, "Only remote UI clients can open Netflix URLs.");
           return;
         }
 
@@ -231,13 +371,14 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           broadcastSnapshot();
         });
 
-        sendMessage(
-          extensionClient,
-          {
-            type: "open_url",
-            url: reference.watchUrl
-          }
-        );
+        try {
+          await openNetflixInChrome(reference.watchUrl);
+        } catch (error) {
+          console.error("Failed to open Netflix URL in Chrome", error);
+          sendError(socket, "Failed to open Google Chrome with the Netflix URL.");
+          return;
+        }
+
         sendMessage(socket, {
           type: "open_netflix_url_accepted"
         });

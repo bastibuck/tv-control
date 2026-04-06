@@ -6,6 +6,8 @@ Local-network Netflix launcher made of three parts:
 - a React remote UI you open from your phone
 - a Chrome extension that opens or reuses a Netflix tab and reports playback state back
 
+The server can also launch Chrome directly when the extension is not already connected.
+
 ## Workspace
 
 - `apps/server` - Node + TypeScript HTTP/WebSocket hub
@@ -35,11 +37,9 @@ Local-network Netflix launcher made of three parts:
 
    `pnpm start` runs the built server from `apps/server/dist`. It does not rebuild files and it does not hot reload.
 
-4. Load the extension in Chrome:
-   - Open `chrome://extensions`
-   - Enable Developer Mode
-   - Click `Load unpacked`
-   - Select `apps/extension/dist`
+4. Build the extension so the server can auto-load it into the TV Control Chrome profile:
+
+   `pnpm build` already writes the built extension to `apps/extension/dist`.
 
 5. Open the remote UI on your phone or another device on the same network:
 
@@ -47,11 +47,25 @@ Local-network Netflix launcher made of three parts:
    http://<server-ip>:8787
    ```
 
+6. Press `Open Netflix` in the remote UI:
+    - If the extension is already connected, it reuses that Chrome session and Netflix tab.
+    - Otherwise the server launches a dedicated Chrome window for TV Control, opens only the requested Netflix page, and auto-loads the built TV Control extension from `apps/extension/dist` without blocking other extensions installed in that profile.
+
+7. Optional: manually load the extension in Chrome if you want to use your existing Chrome session instead of the dedicated TV Control window:
+   - Open `chrome://extensions`
+   - Enable Developer Mode
+   - Click `Load unpacked`
+   - Select `apps/extension/dist`
+
 ## Notes
 
 - The extension defaults to `ws://localhost:8787/ws` in `apps/extension/src/config.ts`.
 - If Chrome runs on a different machine than the server, update that value before building.
 - The app supports opening Netflix watch/title/share URLs, showing live playback state, and sending play/pause controls.
+- When the server launches Chrome itself, it uses a dedicated profile at `.tv-control-chrome/` so it does not restore tabs from your normal Chrome profile.
+- That dedicated profile is persistent. If you log into Netflix there once, the login should still be present on later launches.
+- Server-side Chrome launching currently supports macOS and Linux by looking for standard Chrome or Chromium executables.
+- Opening Netflix works without an already-connected extension, but playback controls only appear after the extension bridge connects.
 
 ## Local Network Run
 
@@ -77,6 +91,7 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 - Use the full absolute path for `WorkingDirectory` in a system service so startup is explicit and easier to debug
 - The service starts the built output directly so it does not depend on `pnpm` being available in the `systemd` environment
 - `systemd` does not inherit your interactive shell PATH, so tools installed through Volta, nvm, or shell init usually need absolute paths
+- On Ubuntu Wayland, the service also needs your desktop session environment so Chrome can open a window. The checked-in unit file sets `XDG_RUNTIME_DIR=/run/user/1000`, `WAYLAND_DISPLAY=wayland-0`, and `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` for user `bastibuck`.
 
 ### Install The Service
 
@@ -109,8 +124,8 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 6. Enable the service so it starts on boot:
 
    ```bash
-   sudo systemctl enable tv-control
-   ```
+    sudo systemctl enable tv-control
+    ```
 
 ### Start The Service
 
@@ -150,6 +165,24 @@ sudo systemctl restart tv-control
 ### Deploy A New Feature Or Code Change
 
 When you change the code, use this flow on the server:
+
+Quick one-command update:
+
+```bash
+~/dev/tv-control/deploy/update-tv-control.sh
+```
+
+That script:
+
+- pulls the latest commits with `git pull --ff-only`
+- runs `pnpm install --frozen-lockfile`
+- runs `pnpm build`
+- copies `deploy/tv-control.service` into `/etc/systemd/system/tv-control.service`
+- runs `sudo systemctl daemon-reload`
+- restarts `tv-control`
+- prints the current service status
+
+Manual flow:
 
 1. Open the repo:
 
