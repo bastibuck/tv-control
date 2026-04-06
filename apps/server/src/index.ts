@@ -203,7 +203,6 @@ async function openChromeUrl(url: string): Promise<void> {
   }
 
   if (existsSync(extensionDistPath)) {
-    args.push(`--disable-extensions-except=${extensionDistPath}`);
     args.push(`--load-extension=${extensionDistPath}`);
   }
 

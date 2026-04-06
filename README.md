@@ -48,8 +48,8 @@ The server can also launch Chrome directly when the extension is not already con
    ```
 
 6. Press `Open Netflix` in the remote UI:
-   - If the extension is already connected, it reuses that Chrome session and Netflix tab.
-   - Otherwise the server launches a dedicated Chrome window for TV Control, opens only the requested Netflix page, and tries to auto-load the built extension from `apps/extension/dist`.
+    - If the extension is already connected, it reuses that Chrome session and Netflix tab.
+    - Otherwise the server launches a dedicated Chrome window for TV Control, opens only the requested Netflix page, and auto-loads the built TV Control extension from `apps/extension/dist` without blocking other extensions installed in that profile.
 
 7. Optional: manually load the extension in Chrome if you want to use your existing Chrome session instead of the dedicated TV Control window:
    - Open `chrome://extensions`
