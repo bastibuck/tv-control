@@ -127,13 +127,61 @@ async function spawnDetached(command: string, args: string[]): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       detached: true,
-      stdio: "ignore"
+      stdio: ["ignore", "ignore", "pipe"]
     });
 
-    child.once("error", reject);
-    child.once("spawn", () => {
+    let settled = false;
+    let stderr = "";
+
+    function cleanup(): void {
+      child.removeAllListeners("error");
+      child.removeAllListeners("spawn");
+      child.removeAllListeners("exit");
+      child.stderr?.removeAllListeners("data");
+      child.stderr?.destroy();
+    }
+
+    function rejectOnce(error: Error): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      reject(error);
+    }
+
+    function resolveOnce(): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
       child.unref();
       resolve();
+    }
+
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      if (stderr.length >= 4000) {
+        return;
+      }
+
+      stderr += chunk.toString();
+    });
+
+    child.once("error", (error) => {
+      rejectOnce(error instanceof Error ? error : new Error(String(error)));
+    });
+
+    child.once("spawn", () => {
+      setTimeout(resolveOnce, 1000);
+    });
+
+    child.once("exit", (code, signal) => {
+      const details = stderr.trim();
+      const suffix = details ? `\n${details}` : "";
+      rejectOnce(new Error(`Process exited early (code=${code ?? "null"}, signal=${signal ?? "null"})${suffix}`));
     });
   });
 }
