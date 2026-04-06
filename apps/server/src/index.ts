@@ -197,6 +197,10 @@ async function openChromeUrl(url: string): Promise<void> {
     "--no-default-browser-check"
   ];
 
+  if (process.platform === "linux" && process.env.WAYLAND_DISPLAY) {
+    args.push("--ozone-platform=wayland");
+  }
+
   if (existsSync(extensionDistPath)) {
     args.push(`--disable-extensions-except=${extensionDistPath}`);
     args.push(`--load-extension=${extensionDistPath}`);

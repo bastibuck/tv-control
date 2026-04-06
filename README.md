@@ -91,6 +91,7 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 - Use the full absolute path for `WorkingDirectory` in a system service so startup is explicit and easier to debug
 - The service starts the built output directly so it does not depend on `pnpm` being available in the `systemd` environment
 - `systemd` does not inherit your interactive shell PATH, so tools installed through Volta, nvm, or shell init usually need absolute paths
+- On Ubuntu Wayland, the service also needs your desktop session environment so Chrome can open a window. The checked-in unit file sets `XDG_RUNTIME_DIR=/run/user/1000`, `WAYLAND_DISPLAY=wayland-0`, and `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` for user `bastibuck`.
 
 ### Install The Service
 
@@ -123,8 +124,8 @@ This repo includes an example unit file at `deploy/tv-control.service`.
 6. Enable the service so it starts on boot:
 
    ```bash
-   sudo systemctl enable tv-control
-   ```
+    sudo systemctl enable tv-control
+    ```
 
 ### Start The Service
 
@@ -176,6 +177,8 @@ That script:
 - pulls the latest commits with `git pull --ff-only`
 - runs `pnpm install --frozen-lockfile`
 - runs `pnpm build`
+- copies `deploy/tv-control.service` into `/etc/systemd/system/tv-control.service`
+- runs `sudo systemctl daemon-reload`
 - restarts `tv-control`
 - prints the current service status
 
