@@ -204,14 +204,15 @@ async function openChromeUrl(url: string): Promise<void> {
 
   args.push(url);
 
-  let lastError: unknown;
+  const failures: string[] = [];
   const candidates = chromeExecutableCandidates();
   for (const command of candidates) {
     try {
       await spawnDetached(command, args);
       return;
     } catch (error) {
-      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${command}: ${message}`);
     }
   }
 
@@ -219,7 +220,7 @@ async function openChromeUrl(url: string): Promise<void> {
     throw new Error(`Unsupported platform: ${process.platform}`);
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Failed to launch Google Chrome.");
+  throw new Error(`Failed to launch Google Chrome. Tried: ${failures.join(" | ")}`);
 }
 
 async function openNetflixInChrome(url: string): Promise<void> {
