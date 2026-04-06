@@ -198,6 +198,7 @@ async function openChromeUrl(url: string): Promise<void> {
   ];
 
   if (process.platform === "linux" && process.env.WAYLAND_DISPLAY) {
+    args.push("--enable-features=UseOzonePlatform");
     args.push("--ozone-platform=wayland");
   }
 
@@ -212,6 +213,9 @@ async function openChromeUrl(url: string): Promise<void> {
   const candidates = chromeExecutableCandidates();
   for (const command of candidates) {
     try {
+      console.log(
+        `Launching browser: command=${command} WAYLAND_DISPLAY=${process.env.WAYLAND_DISPLAY ?? "<unset>"} XDG_RUNTIME_DIR=${process.env.XDG_RUNTIME_DIR ?? "<unset>"} XDG_SESSION_TYPE=${process.env.XDG_SESSION_TYPE ?? "<unset>"} DISPLAY=${process.env.DISPLAY ?? "<unset>"} args=${args.join(" ")}`
+      );
       await spawnDetached(command, args);
       return;
     } catch (error) {
