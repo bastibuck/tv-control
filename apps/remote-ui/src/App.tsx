@@ -286,7 +286,7 @@ export function App(): ReactElement {
   }
 
   function handleOpenNetflix(): void {
-    if (!socket || socket.readyState !== WebSocket.OPEN || !extensionConnected) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
