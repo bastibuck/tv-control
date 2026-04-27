@@ -46,6 +46,14 @@ function playbackLabel(playback: PlaybackState | null): string {
   }
 }
 
+function episodeLabel(playback: PlaybackState | null): string | null {
+  if (!playback?.episodeTitle || playback.episodeNumber === null) {
+    return null;
+  }
+
+  return `Episode ${playback.episodeNumber}: ${playback.episodeTitle}`;
+}
+
 function statusLine(
   playback: PlaybackState | null,
   extensionConnected: boolean,
@@ -248,6 +256,7 @@ export function App(): ReactElement {
   }, [sliderTime, playback]);
 
   const mode = transportMode(playback);
+  const activeEpisodeLabel = episodeLabel(playback);
   const transportDisabled =
     socketState !== "connected" ||
     !extensionConnected ||
@@ -426,6 +435,9 @@ export function App(): ReactElement {
         <div className="title-block">
           <p className="section-label">Now showing</p>
           <h2>{playback?.title ?? "Nothing has started yet"}</h2>
+          {activeEpisodeLabel ? (
+            <p className="episode-copy">{activeEpisodeLabel}</p>
+          ) : null}
           <p className="section-copy">{playbackLabel(playback)}</p>
         </div>
 

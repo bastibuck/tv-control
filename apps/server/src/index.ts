@@ -34,6 +34,12 @@ type RegisteredSocket = WebSocket & {
   name?: string;
 };
 
+type CachedNetflixMetadata = {
+  title?: string;
+  episodeNumber?: number | null;
+  episodeTitle?: string | null;
+};
+
 const mimeTypes: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -48,7 +54,7 @@ let extensionClient: RegisteredSocket | null = null;
 const remoteClients = new Set<RegisteredSocket>();
 let latestPlayback: PlaybackState | null = null;
 let pendingSeekTime: number | null = null;
-const titleCache = new Map<string, string>();
+const titleCache = new Map<string, CachedNetflixMetadata>();
 
 function titleForPlayback(
   playback: PlaybackState | null,
@@ -62,14 +68,16 @@ function titleForPlayback(
     return playback;
   }
 
-  const cachedTitle = titleCache.get(reference.id);
-  if (!cachedTitle) {
+  const cachedMetadata = titleCache.get(reference.id);
+  if (!cachedMetadata) {
     return playback;
   }
 
   return {
     ...playback,
-    title: cachedTitle,
+    title: cachedMetadata.title,
+    episodeNumber: cachedMetadata.episodeNumber ?? null,
+    episodeTitle: cachedMetadata.episodeTitle ?? null,
   };
 }
 
@@ -113,8 +121,8 @@ async function cacheNetflixTitle(url: string): Promise<void> {
   }
 
   const metadata = await fetchNetflixMetadata(reference);
-  if (metadata.title) {
-    titleCache.set(reference.id, metadata.title);
+  if (metadata.title || metadata.episodeNumber || metadata.episodeTitle) {
+    titleCache.set(reference.id, metadata);
   }
 }
 
@@ -498,6 +506,8 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         const nextPlayback = titleForPlayback({
           ...message.playback,
           title: undefined,
+          episodeNumber: null,
+          episodeTitle: null,
         });
 
         if (

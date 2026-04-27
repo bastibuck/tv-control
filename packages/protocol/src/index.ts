@@ -41,6 +41,8 @@ export const playbackStateSchema = z.object({
   status: playbackStatusSchema,
   controllable: z.boolean(),
   title: z.string().min(1).optional(),
+  episodeNumber: z.number().int().positive().nullable().optional(),
+  episodeTitle: z.string().min(1).nullable().optional(),
   currentTime: z.number().nonnegative().optional(),
   duration: z.number().nonnegative().optional(),
   url: z.url().optional(),

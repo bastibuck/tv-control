@@ -12,6 +12,7 @@ const NETFLIX_OG_TITLE_PATTERNS = [
   /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["'][^>]*>/i,
 ];
 const NETFLIX_TITLE_TAG_PATTERN = /<title[^>]*>([^<]+)<\/title>/i;
+const NETFLIX_EPISODE_STRING_PATTERN = String.raw`((?:\\.|[^\"])*)`;
 
 type NetflixReference = {
   id: string;
@@ -21,6 +22,8 @@ type NetflixReference = {
 
 type NetflixMetadata = {
   title?: string;
+  episodeNumber?: number | null;
+  episodeTitle?: string | null;
 };
 
 function extractIdFromPath(pathname: string): string | null {
@@ -50,6 +53,16 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .trim();
+}
+
+function decodeNetflixScriptString(value: string): string {
+  const normalized = value.replace(/\\x([0-9a-fA-F]{2})/g, "\\u00$1");
+
+  try {
+    return JSON.parse(`"${normalized}"`) as string;
+  } catch {
+    return value;
+  }
 }
 
 function cleanNetflixTitle(rawTitle: string): string | undefined {
@@ -91,6 +104,65 @@ function extractTitleFromHtml(html: string): string | undefined {
   return undefined;
 }
 
+function preferredAcceptLanguageHeader(): string {
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+  const normalized = /^[a-z]{2}(?:-[A-Z]{2})?$/.test(locale)
+    ? locale
+    : "en-US";
+  const language = normalized.split("-")[0] ?? "en";
+
+  if (normalized === language) {
+    return `${language},en;q=0.8`;
+  }
+
+  return `${normalized},${language};q=0.9,en-US;q=0.8,en;q=0.7`;
+}
+
+function extractEpisodeMetadataFromHtml(
+  html: string,
+  reference: NetflixReference,
+): NetflixMetadata | undefined {
+  const episodePattern = new RegExp(
+    String.raw`Episode:\{\\"videoId\\":${reference.id}\}":\{"__typename":"Episode","videoId":${reference.id},"title":"${NETFLIX_EPISODE_STRING_PATTERN}"[\s\S]*?"number":(\d+)`,
+  );
+  const episodeMatch = episodePattern.exec(html);
+  const seriesTitle = extractTitleFromHtml(html);
+  const episodeTitle = episodeMatch?.[1]
+    ? cleanNetflixTitle(decodeNetflixScriptString(episodeMatch[1]))
+    : undefined;
+  const episodeNumber = episodeMatch?.[2];
+
+  if (!seriesTitle || !episodeTitle || !episodeNumber) {
+    return undefined;
+  }
+
+  return {
+    title: seriesTitle,
+    episodeNumber: Number(episodeNumber),
+    episodeTitle,
+  };
+}
+
+async function fetchNetflixHtml(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "accept-language": preferredAcceptLanguageHeader(),
+        "user-agent": "tv-control/1.0",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
+
 export function parseNetflixReference(rawUrl: string): NetflixReference | null {
   let parsed: URL;
 
@@ -116,23 +188,20 @@ export function parseNetflixReference(rawUrl: string): NetflixReference | null {
 export async function fetchNetflixMetadata(
   reference: NetflixReference,
 ): Promise<NetflixMetadata> {
-  try {
-    const response = await fetch(reference.titleUrl, {
-      headers: {
-        "user-agent": "tv-control/1.0",
-      },
-      redirect: "follow",
-    });
+  const watchHtml = await fetchNetflixHtml(reference.watchUrl);
+  if (watchHtml) {
+    const episodeMetadata = extractEpisodeMetadataFromHtml(watchHtml, reference);
 
-    if (!response.ok) {
-      return {};
-    }
-
-    const html = await response.text();
     return {
-      title: extractTitleFromHtml(html),
+      ...episodeMetadata,
+      title: episodeMetadata?.title ?? extractTitleFromHtml(watchHtml),
     };
-  } catch {
-    return {};
   }
+
+  const titleHtml = await fetchNetflixHtml(reference.titleUrl);
+  return {
+    title: titleHtml ? extractTitleFromHtml(titleHtml) : undefined,
+    episodeNumber: null,
+    episodeTitle: null,
+  };
 }
