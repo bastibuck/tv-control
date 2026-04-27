@@ -63,6 +63,7 @@ The server can also launch Chrome directly when the extension is not already con
 - If Chrome runs on a different machine than the server, update that value before building.
 - The app supports opening Netflix watch/title/share URLs, showing live playback state, and sending play/pause controls.
 - When the server launches Chrome itself, it uses a dedicated profile at `.tv-control-chrome/` so it does not restore tabs from your normal Chrome profile.
+- That dedicated Chrome launch also suppresses the crash restore prompt if the TV Control window closed unexpectedly.
 - That dedicated profile is persistent. If you log into Netflix there once, the login should still be present on later launches.
 - Server-side Chrome launching currently supports macOS and Linux by looking for standard Chrome or Chromium executables.
 - Opening Netflix works without an already-connected extension, but playback controls only appear after the extension bridge connects.

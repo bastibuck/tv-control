@@ -229,6 +229,8 @@ async function openChromeUrl(url: string): Promise<void> {
     "--start-fullscreen",
     "--no-first-run",
     "--no-default-browser-check",
+    "--disable-session-crashed-bubble",
+    "--hide-crash-restore-bubble",
   ];
 
   if (process.platform === "linux" && process.env.WAYLAND_DISPLAY) {
