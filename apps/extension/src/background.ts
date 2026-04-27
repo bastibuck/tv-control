@@ -82,29 +82,8 @@ async function dispatchPlaybackCommand(
       world: "MAIN",
       args: [deltaSeconds],
       func: (seconds: number) => {
-        const globalObject = window as typeof window & {
-          netflix?: {
-            appContext?: {
-              state?: {
-                playerApp?: {
-                  getAPI?: () => {
-                    videoPlayer?: {
-                      getAllPlayerSessionIds?: () => string[];
-                      getVideoPlayerBySessionId?: (sessionId: string) => {
-                        seek?: (timeMs: number) => void;
-                        getCurrentTime?: () => number;
-                      };
-                    };
-                  };
-                };
-              };
-            };
-          };
-        };
-
         const videoApi =
-          globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.()
-            .videoPlayer;
+          window.netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
         const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
         const player = sessionId
           ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
