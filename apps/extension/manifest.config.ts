@@ -9,16 +9,16 @@ export default defineManifest({
   host_permissions: ["https://www.netflix.com/*"],
   background: {
     service_worker: "src/background.ts",
-    type: "module"
+    type: "module",
   },
   content_scripts: [
     {
       matches: ["https://www.netflix.com/*"],
       js: ["src/content.ts"],
-      run_at: "document_idle"
-    }
+      run_at: "document_idle",
+    },
   ],
   action: {
-    default_title: "TV Control Netflix Bridge"
-  }
+    default_title: "TV Control Netflix Bridge",
+  },
 });

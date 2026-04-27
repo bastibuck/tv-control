@@ -2,9 +2,13 @@ import {
   clientToServerMessageSchema,
   serverToClientMessageSchema,
   type PlaybackCommand,
-  type PlaybackState
+  type PlaybackState,
 } from "@tv-control/protocol";
-import { NETFLIX_URL_PATTERN, RECONNECT_DELAY_MS, SERVER_WS_URL } from "./config";
+import {
+  NETFLIX_URL_PATTERN,
+  RECONNECT_DELAY_MS,
+  SERVER_WS_URL,
+} from "./config";
 
 type ContentMessage = {
   type: "content_playback_state";
@@ -31,7 +35,9 @@ function sendToServer(message: unknown): void {
 
 async function findNetflixTab(): Promise<chrome.tabs.Tab | undefined> {
   const tabs = await chrome.tabs.query({});
-  return tabs.find((tab) => typeof tab.url === "string" && NETFLIX_URL_PATTERN.test(tab.url));
+  return tabs.find(
+    (tab) => typeof tab.url === "string" && NETFLIX_URL_PATTERN.test(tab.url),
+  );
 }
 
 async function openOrReuseNetflixTab(url: string): Promise<void> {
@@ -41,7 +47,10 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
     await chrome.tabs.update(existingTab.id, { active: true, url });
 
     if (existingTab.windowId !== undefined) {
-      await chrome.windows.update(existingTab.windowId, { focused: true, state: "fullscreen" });
+      await chrome.windows.update(existingTab.windowId, {
+        focused: true,
+        state: "fullscreen",
+      });
     }
 
     return;
@@ -53,7 +62,9 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
   }
 }
 
-async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> {
+async function dispatchPlaybackCommand(
+  command: PlaybackCommand,
+): Promise<void> {
   const netflixTab = await findNetflixTab();
   if (netflixTab?.id === undefined) {
     return;
@@ -65,7 +76,7 @@ async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> 
   }
 
   if (command === "seek_back_10" || command === "seek_forward_10") {
-    const deltaSeconds = command === "seek_back_10" ? -10 : 10;
+    const deltaSeconds = command === "seek_back_10" ? -10 : 200;
     await chrome.scripting.executeScript({
       target: { tabId: netflixTab.id },
       world: "MAIN",
@@ -92,9 +103,13 @@ async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> 
         };
 
         try {
-          const videoApi = globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+          const videoApi =
+            globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.()
+              .videoPlayer;
           const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
-          const player = sessionId ? videoApi?.getVideoPlayerBySessionId?.(sessionId) : undefined;
+          const player = sessionId
+            ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
+            : undefined;
           const currentTimeMs = player?.getCurrentTime?.();
           if (player?.seek && typeof currentTimeMs === "number") {
             player.seek(Math.max(0, currentTimeMs + seconds * 1000));
@@ -106,17 +121,22 @@ async function dispatchPlaybackCommand(command: PlaybackCommand): Promise<void> 
 
         const video = document.querySelector("video");
         if (video instanceof HTMLVideoElement) {
-          const duration = Number.isFinite(video.duration) ? video.duration : Number.MAX_SAFE_INTEGER;
-          video.currentTime = Math.max(0, Math.min(duration, video.currentTime + seconds));
+          const duration = Number.isFinite(video.duration)
+            ? video.duration
+            : Number.MAX_SAFE_INTEGER;
+          video.currentTime = Math.max(
+            0,
+            Math.min(duration, video.currentTime + seconds),
+          );
         }
-      }
+      },
     });
     return;
   }
 
   await chrome.tabs.sendMessage(netflixTab.id, {
     type: "playback_command",
-    command
+    command,
   } satisfies BackgroundToContentMessage);
 }
 
@@ -147,14 +167,22 @@ function startHeartbeat(): void {
 }
 
 function connect(): void {
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+  if (
+    socket &&
+    (socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING)
+  ) {
     return;
   }
 
   socket = new WebSocket(SERVER_WS_URL);
 
   socket.addEventListener("open", () => {
-    sendToServer({ type: "hello", role: "extension", name: "chrome-netflix-bridge" });
+    sendToServer({
+      type: "hello",
+      role: "extension",
+      name: "chrome-netflix-bridge",
+    });
     startHeartbeat();
 
     if (latestPlayback) {
@@ -203,7 +231,10 @@ chrome.runtime.onMessage.addListener((message: ContentMessage) => {
     return;
   }
 
-  const parsed = clientToServerMessageSchema.safeParse({ type: "playback_state", playback: message.playback });
+  const parsed = clientToServerMessageSchema.safeParse({
+    type: "playback_state",
+    playback: message.playback,
+  });
   if (!parsed.success) {
     return;
   }

@@ -1,6 +1,13 @@
-import type { PlaybackCommand, PlaybackState, PlaybackStatus } from "@tv-control/protocol";
+import type {
+  PlaybackCommand,
+  PlaybackState,
+  PlaybackStatus,
+} from "@tv-control/protocol";
 
-type PlaybackDetails = Pick<PlaybackState, "title" | "currentTime" | "duration" | "url">;
+type PlaybackDetails = Pick<
+  PlaybackState,
+  "title" | "currentTime" | "duration" | "url"
+>;
 type IncomingCommandMessage = {
   type: "playback_command";
   command: PlaybackCommand;
@@ -25,7 +32,7 @@ function computePlaybackStatus(video: HTMLVideoElement | null): PlaybackStatus {
     return document.readyState === "complete" ? "idle" : "loading";
   }
 
-   if (video.paused) {
+  if (video.paused) {
     return "paused";
   }
 
@@ -42,7 +49,7 @@ function playbackDetails(video: HTMLVideoElement | null): PlaybackDetails {
       title: undefined,
       currentTime: undefined,
       duration: undefined,
-      url: undefined
+      url: undefined,
     };
   }
 
@@ -50,7 +57,7 @@ function playbackDetails(video: HTMLVideoElement | null): PlaybackDetails {
     title: undefined,
     currentTime: video?.currentTime,
     duration: Number.isFinite(video?.duration) ? video?.duration : undefined,
-    url: location.href
+    url: location.href,
   };
 }
 
@@ -64,7 +71,7 @@ function sendPlayback(force = false): void {
     status: computePlaybackStatus(attachedVideo),
     controllable: isWatchPage() && attachedVideo !== null,
     ...playbackDetails(attachedVideo),
-    updatedAt: now
+    updatedAt: now,
   };
 
   chrome.runtime.sendMessage({ type: "content_playback_state", playback });
@@ -78,33 +85,21 @@ function attachVideo(video: HTMLVideoElement): void {
 
   attachedVideo = video;
 
-  for (const eventName of ["play", "pause", "playing", "waiting", "loadedmetadata", "timeupdate", "seeking"]) {
-    video.addEventListener(eventName, () => sendPlayback(eventName !== "timeupdate"));
+  for (const eventName of [
+    "play",
+    "pause",
+    "playing",
+    "waiting",
+    "loadedmetadata",
+    "timeupdate",
+    "seeking",
+  ]) {
+    video.addEventListener(eventName, () =>
+      sendPlayback(eventName !== "timeupdate"),
+    );
   }
 
   sendPlayback(true);
-}
-
-function dispatchNetflixKey(key: "ArrowLeft" | "ArrowRight"): void {
-  const activeTarget = document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
-  for (const type of ["keydown", "keyup"] as const) {
-    activeTarget.dispatchEvent(
-      new KeyboardEvent(type, {
-        key,
-        code: key,
-        bubbles: true,
-        cancelable: true
-      })
-    );
-  }
-}
-
-function seekBy(seconds: number): void {
-  if (!attachedVideo) {
-    return;
-  }
-
-  attachedVideo.currentTime = Math.max(0, Math.min(attachedVideo.duration || Number.MAX_SAFE_INTEGER, attachedVideo.currentTime + seconds));
 }
 
 async function applyPlaybackCommand(command: PlaybackCommand): Promise<void> {
@@ -112,20 +107,21 @@ async function applyPlaybackCommand(command: PlaybackCommand): Promise<void> {
     locateVideo();
   }
 
-  if (!attachedVideo && command !== "seek_back_10" && command !== "seek_forward_10") {
+  if (!attachedVideo) {
     return;
   }
 
-  if (command === "play") {
-    await attachedVideo?.play().catch(() => undefined);
-  } else if (command === "pause") {
-    attachedVideo?.pause();
-  } else if (command === "seek_back_10") {
-    seekBy(-10);
-    dispatchNetflixKey("ArrowLeft");
-  } else {
-    seekBy(10);
-    dispatchNetflixKey("ArrowRight");
+  switch (command) {
+    case "play":
+      await attachedVideo.play().catch(() => undefined);
+      break;
+
+    case "pause":
+      attachedVideo.pause();
+      break;
+
+    default:
+      break;
   }
 
   sendPlayback(true);
