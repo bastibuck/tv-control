@@ -76,7 +76,7 @@ async function dispatchPlaybackCommand(
   }
 
   if (command === "seek_back_10" || command === "seek_forward_10") {
-    const deltaSeconds = command === "seek_back_10" ? -10 : 200;
+    const deltaSeconds = command === "seek_back_10" ? -10 : 10;
     await chrome.scripting.executeScript({
       target: { tabId: netflixTab.id },
       world: "MAIN",
@@ -102,32 +102,16 @@ async function dispatchPlaybackCommand(
           };
         };
 
-        try {
-          const videoApi =
-            globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.()
-              .videoPlayer;
-          const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
-          const player = sessionId
-            ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
-            : undefined;
-          const currentTimeMs = player?.getCurrentTime?.();
-          if (player?.seek && typeof currentTimeMs === "number") {
-            player.seek(Math.max(0, currentTimeMs + seconds * 1000));
-            return;
-          }
-        } catch {
-          // Fall back to the content script path below.
-        }
-
-        const video = document.querySelector("video");
-        if (video instanceof HTMLVideoElement) {
-          const duration = Number.isFinite(video.duration)
-            ? video.duration
-            : Number.MAX_SAFE_INTEGER;
-          video.currentTime = Math.max(
-            0,
-            Math.min(duration, video.currentTime + seconds),
-          );
+        const videoApi =
+          globalObject.netflix?.appContext?.state?.playerApp?.getAPI?.()
+            .videoPlayer;
+        const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
+        const player = sessionId
+          ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
+          : undefined;
+        const currentTimeMs = player?.getCurrentTime?.();
+        if (player?.seek && typeof currentTimeMs === "number") {
+          player.seek(Math.max(0, currentTimeMs + seconds * 1000));
         }
       },
     });
