@@ -396,43 +396,40 @@ export function App(): ReactElement {
         <div className="hero-noise" aria-hidden="true" />
         <div className="status-row" aria-label="Connections">
           <div className="status-labels">
-
-          <span className="status-pill" title={`Server: ${socketState}`}>
-            <span className={`status-light status-light--${socketState}`} />
-            <span className="status-glyph">R</span>
-          </span>
-          <span
-            className="status-pill"
-            title={`Netflix bridge: ${extensionConnected ? "connected" : "disconnected"}`}
-            >
+            <span className="status-pill" title={`Server: ${socketState}`}>
+              <span className={`status-light status-light--${socketState}`} />
+              <span className="status-glyph">R</span>
+            </span>
             <span
-              className={`status-light status-light--${extensionConnected ? "connected" : "disconnected"}`}
+              className="status-pill"
+              title={`Netflix bridge: ${extensionConnected ? "connected" : "disconnected"}`}
+            >
+              <span
+                className={`status-light status-light--${extensionConnected ? "connected" : "disconnected"}`}
               />
-            <span className="status-glyph">N</span>
-          </span>
-              </div>
-
+              <span className="status-glyph">N</span>
+            </span>
+          </div>
 
           <div className="control-btns">
-
-          <button
-            className="refresh-button"
-            type="button"
-            onClick={handleReconnect}
-            aria-label="Reconnect websocket"
+            <button
+              className="refresh-button"
+              type="button"
+              onClick={handleReconnect}
+              aria-label="Reconnect websocket"
             >
-            <span className="refresh-ring" />
-          </button>
-          <button
-            className="refresh-button"
-            type="button"
-            onClick={handleRestartChrome}
-            aria-label="Restart dedicated Chrome"
-            disabled={restartChromeDisabled}
+              <span className="refresh-ring" />
+            </button>
+            <button
+              className="refresh-button"
+              type="button"
+              onClick={handleRestartChrome}
+              aria-label="Restart dedicated Chrome"
+              disabled={restartChromeDisabled}
             >
-            <span className="refresh-mark">R</span>
-          </button>
-            </div>
+              <span className="refresh-mark">R</span>
+            </button>
+          </div>
         </div>
 
         <p className="hero-kicker">Netflix remote</p>

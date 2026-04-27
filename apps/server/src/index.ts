@@ -467,7 +467,9 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
         }
 
         try {
-          await restartDedicatedChrome(message.url ?? "https://www.netflix.com");
+          await restartDedicatedChrome(
+            message.url ?? "https://www.netflix.com",
+          );
         } catch (error) {
           console.error("Failed to restart dedicated Chrome", error);
           sendError(socket, "Failed to restart the dedicated Chrome window.");

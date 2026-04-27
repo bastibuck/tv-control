@@ -106,9 +106,7 @@ function extractTitleFromHtml(html: string): string | undefined {
 
 function preferredAcceptLanguageHeader(): string {
   const locale = Intl.DateTimeFormat().resolvedOptions().locale;
-  const normalized = /^[a-z]{2}(?:-[A-Z]{2})?$/.test(locale)
-    ? locale
-    : "en-US";
+  const normalized = /^[a-z]{2}(?:-[A-Z]{2})?$/.test(locale) ? locale : "en-US";
   const language = normalized.split("-")[0] ?? "en";
 
   if (normalized === language) {
@@ -190,7 +188,10 @@ export async function fetchNetflixMetadata(
 ): Promise<NetflixMetadata> {
   const watchHtml = await fetchNetflixHtml(reference.watchUrl);
   if (watchHtml) {
-    const episodeMetadata = extractEpisodeMetadataFromHtml(watchHtml, reference);
+    const episodeMetadata = extractEpisodeMetadataFromHtml(
+      watchHtml,
+      reference,
+    );
 
     return {
       ...episodeMetadata,

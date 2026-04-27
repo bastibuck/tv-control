@@ -3,12 +3,12 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["chrome"],
+    "types": ["chrome"]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "manifest.config.ts",
-    "vite.config.ts",
-  ],
+    "vite.config.ts"
+  ]
 }
