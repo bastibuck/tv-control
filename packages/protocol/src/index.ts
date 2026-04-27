@@ -14,11 +14,28 @@ export type PlaybackStatus = z.infer<typeof playbackStatusSchema>;
 export const playbackCommandSchema = z.enum([
   "play",
   "pause",
-  "seek_back_10",
-  "seek_forward_10",
   "reload",
+  "seek",
 ]);
 export type PlaybackCommand = z.infer<typeof playbackCommandSchema>;
+
+export const seekOptionsSchema = z.object({
+  kind: z.enum(["relative", "absolute"]),
+  time: z.number(),
+});
+export type SeekOptions = z.infer<typeof seekOptionsSchema>;
+
+export const playbackCommandMessageSchema = z.discriminatedUnion("command", [
+  z.object({
+    type: z.literal("playback_command"),
+    command: z.enum(["play", "pause", "reload"]),
+  }),
+  z.object({
+    type: z.literal("playback_command"),
+    command: z.literal("seek"),
+    options: seekOptionsSchema,
+  }),
+]);
 
 export const playbackStateSchema = z.object({
   status: playbackStatusSchema,
@@ -52,11 +69,6 @@ export const requestStateMessageSchema = z.object({
 
 export const heartbeatMessageSchema = z.object({
   type: z.literal("heartbeat"),
-});
-
-export const playbackCommandMessageSchema = z.object({
-  type: z.literal("playback_command"),
-  command: playbackCommandSchema,
 });
 
 export const playbackStateMessageSchema = z.object({
@@ -93,10 +105,20 @@ export const openNetflixAcceptedMessageSchema = z.object({
   type: z.literal("open_netflix_accepted"),
 });
 
-export const executePlaybackCommandMessageSchema = z.object({
-  type: z.literal("execute_playback_command"),
-  command: playbackCommandSchema,
-});
+export const executePlaybackCommandMessageSchema = z.discriminatedUnion(
+  "command",
+  [
+    z.object({
+      type: z.literal("execute_playback_command"),
+      command: z.enum(["play", "pause", "reload"]),
+    }),
+    z.object({
+      type: z.literal("execute_playback_command"),
+      command: z.literal("seek"),
+      options: seekOptionsSchema,
+    }),
+  ],
+);
 
 export const stateSnapshotMessageSchema = z.object({
   type: z.literal("state_snapshot"),

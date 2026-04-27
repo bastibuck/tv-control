@@ -47,6 +47,7 @@ const mimeTypes: Record<string, string> = {
 let extensionClient: RegisteredSocket | null = null;
 const remoteClients = new Set<RegisteredSocket>();
 let latestPlayback: PlaybackState | null = null;
+let pendingSeekTime: number | null = null;
 const titleCache = new Map<string, string>();
 
 function titleForPlayback(
@@ -79,10 +80,18 @@ function sendMessage(socket: WebSocket, message: ServerToClientMessage): void {
 }
 
 function currentSnapshot(): ServerToClientMessage {
+  const playback =
+    latestPlayback && pendingSeekTime !== null
+      ? {
+          ...latestPlayback,
+          currentTime: pendingSeekTime,
+        }
+      : latestPlayback;
+
   return stateSnapshotMessageSchema.parse({
     type: "state_snapshot",
     extensionConnected: extensionClient?.readyState === WebSocket.OPEN,
-    playback: titleForPlayback(latestPlayback),
+    playback: titleForPlayback(playback),
   });
 }
 
@@ -447,10 +456,33 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           return;
         }
 
-        sendMessage(extensionClient, {
-          type: "execute_playback_command",
-          command: message.command,
-        });
+        if (message.command === "seek") {
+          pendingSeekTime =
+            message.options.kind === "absolute"
+              ? message.options.time
+              : latestPlayback?.currentTime !== undefined
+                ? latestPlayback.currentTime + message.options.time
+                : null;
+
+          if (pendingSeekTime !== null && latestPlayback) {
+            latestPlayback = {
+              ...latestPlayback,
+              currentTime: Math.max(0, pendingSeekTime),
+            };
+            broadcastSnapshot();
+          }
+
+          sendMessage(extensionClient, {
+            type: "execute_playback_command",
+            command: message.command,
+            options: message.options,
+          });
+        } else {
+          sendMessage(extensionClient, {
+            type: "execute_playback_command",
+            command: message.command,
+          });
+        }
         break;
       }
 
@@ -463,10 +495,27 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           return;
         }
 
-        latestPlayback = titleForPlayback({
+        const nextPlayback = titleForPlayback({
           ...message.playback,
           title: undefined,
         });
+
+        if (
+          nextPlayback &&
+          pendingSeekTime !== null &&
+          nextPlayback.currentTime !== undefined &&
+          Math.abs(nextPlayback.currentTime - pendingSeekTime) <= 1
+        ) {
+          pendingSeekTime = null;
+        }
+
+        latestPlayback =
+          nextPlayback && pendingSeekTime !== null
+            ? {
+                ...nextPlayback,
+                currentTime: pendingSeekTime,
+              }
+            : nextPlayback;
         broadcastSnapshot();
         refreshPlaybackTitleFromUrl(latestPlayback);
         break;

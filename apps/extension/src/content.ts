@@ -10,7 +10,7 @@ type PlaybackDetails = Pick<
 >;
 type IncomingCommandMessage = {
   type: "playback_command";
-  command: PlaybackCommand;
+  command: Exclude<PlaybackCommand, "seek">;
 };
 
 const WATCH_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?watch\//;
@@ -169,11 +169,9 @@ window.setInterval(() => {
 }, 1000);
 
 chrome.runtime.onMessage.addListener((message: IncomingCommandMessage) => {
-  if (message.type !== "playback_command") {
-    return;
+  if (message.type === "playback_command") {
+    void applyPlaybackCommand(message.command);
   }
-
-  void applyPlaybackCommand(message.command);
 });
 
 sendPlayback(true);

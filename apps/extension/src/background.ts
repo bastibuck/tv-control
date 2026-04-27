@@ -3,6 +3,7 @@ import {
   serverToClientMessageSchema,
   type PlaybackCommand,
   type PlaybackState,
+  type SeekOptions,
 } from "@tv-control/protocol";
 import {
   NETFLIX_URL_PATTERN,
@@ -17,7 +18,7 @@ type ContentMessage = {
 
 type BackgroundToContentMessage = {
   type: "playback_command";
-  command: PlaybackCommand;
+  command: Exclude<PlaybackCommand, "seek">;
 };
 
 const HEARTBEAT_INTERVAL_MS = 20000;
@@ -63,7 +64,7 @@ async function openOrReuseNetflixTab(url: string): Promise<void> {
 }
 
 async function dispatchPlaybackCommand(
-  command: PlaybackCommand,
+  command: Exclude<PlaybackCommand, "seek">,
 ): Promise<void> {
   const netflixTab = await findNetflixTab();
   if (netflixTab?.id === undefined) {
@@ -75,32 +76,42 @@ async function dispatchPlaybackCommand(
     return;
   }
 
-  if (command === "seek_back_10" || command === "seek_forward_10") {
-    const deltaSeconds = command === "seek_back_10" ? -10 : 10;
-    await chrome.scripting.executeScript({
-      target: { tabId: netflixTab.id },
-      world: "MAIN",
-      args: [deltaSeconds],
-      func: (seconds: number) => {
-        const videoApi =
-          window.netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
-        const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
-        const player = sessionId
-          ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
-          : undefined;
-        const currentTimeMs = player?.getCurrentTime?.();
-        if (player?.seek && typeof currentTimeMs === "number") {
-          player.seek(Math.max(0, currentTimeMs + seconds * 1000));
-        }
-      },
-    });
-    return;
-  }
-
   await chrome.tabs.sendMessage(netflixTab.id, {
     type: "playback_command",
     command,
   } satisfies BackgroundToContentMessage);
+}
+
+async function dispatchSeek(options: SeekOptions): Promise<void> {
+  const netflixTab = await findNetflixTab();
+  if (netflixTab?.id === undefined) {
+    return;
+  }
+
+  await chrome.scripting.executeScript({
+    target: { tabId: netflixTab.id },
+    world: "MAIN",
+    args: [options],
+    func: (seekOptions: SeekOptions) => {
+      const videoApi =
+        window.netflix?.appContext?.state?.playerApp?.getAPI?.().videoPlayer;
+      const sessionId = videoApi?.getAllPlayerSessionIds?.()[0];
+      const player = sessionId
+        ? videoApi?.getVideoPlayerBySessionId?.(sessionId)
+        : undefined;
+      const currentTimeMs = player?.getCurrentTime?.();
+      const targetTimeMs =
+        seekOptions.kind === "absolute"
+          ? seekOptions.time * 1000
+          : typeof currentTimeMs === "number"
+            ? currentTimeMs + seekOptions.time * 1000
+            : undefined;
+
+      if (player?.seek && typeof targetTimeMs === "number") {
+        player.seek(Math.max(0, targetTimeMs));
+      }
+    },
+  });
 }
 
 function scheduleReconnect(): void {
@@ -173,7 +184,11 @@ function connect(): void {
     }
 
     if (message.type === "execute_playback_command") {
-      await dispatchPlaybackCommand(message.command);
+      if (message.command === "seek") {
+        await dispatchSeek(message.options);
+      } else {
+        await dispatchPlaybackCommand(message.command);
+      }
     }
   });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import {
   serverToClientMessageSchema,
-  type PlaybackCommand,
   type PlaybackState,
   type ServerToClientMessage,
 } from "@tv-control/protocol";
@@ -79,8 +79,8 @@ function transportLabel(playback: PlaybackState | null): string {
   return transportMode(playback) === "pause" ? "Pause" : "Play";
 }
 
-function seekLabel(command: PlaybackCommand): string {
-  return command === "seek_back_10" ? "-10s" : "+10s";
+function seekLabel(time: number): string {
+  return `${time > 0 ? "+" : ""}${time}s`;
 }
 
 function TransportIcon({ mode }: { mode: "play" | "pause" }): ReactElement {
@@ -106,6 +106,7 @@ export function App(): ReactElement {
   const [netflixUrl, setNetflixUrl] = useState("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [reconnectVersion, setReconnectVersion] = useState(0);
+  const [dragTime, setDragTime] = useState<number | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -233,17 +234,18 @@ export function App(): ReactElement {
     };
   }, [playback]);
 
+  const sliderTime = dragTime ?? displayCurrentTime;
   const progress = useMemo(() => {
     if (
       playback?.duration === undefined ||
-      displayCurrentTime === undefined ||
+      sliderTime === undefined ||
       playback.duration <= 0
     ) {
       return 0;
     }
 
-    return Math.min(100, (displayCurrentTime / playback.duration) * 100);
-  }, [displayCurrentTime, playback]);
+    return Math.min(100, (sliderTime / playback.duration) * 100);
+  }, [sliderTime, playback]);
 
   const mode = transportMode(playback);
   const transportDisabled =
@@ -261,17 +263,65 @@ export function App(): ReactElement {
       playback.status === "loading");
   const launchDisabled = socketState !== "connected";
   const reloadDisabled = socketState !== "connected" || !extensionConnected;
+  const sliderDisabled =
+    transportDisabled ||
+    playback?.duration === undefined ||
+    playback.duration <= 0;
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
+  function canSendSocketMessage(): boolean {
+    return socket !== null && socket.readyState === WebSocket.OPEN;
+  }
 
+  function canControlPlayback(): boolean {
+    return (
+      canSendSocketMessage() && extensionConnected && !!playback?.controllable
+    );
+  }
+
+  function sendSocketMessage(message: object): void {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    socket.send(
-      JSON.stringify({ type: "open_netflix_url", url: netflixUrl.trim() }),
+    socket.send(JSON.stringify(message));
+  }
+
+  function sendPlaybackCommand(
+    command: "play" | "pause" | "reload" | "seek",
+    options?: { kind: "relative" | "absolute"; time: number },
+  ): void {
+    if (command === "reload") {
+      if (!canSendSocketMessage() || !extensionConnected) {
+        return;
+      }
+    } else if (!canControlPlayback()) {
+      return;
+    }
+
+    if (command === "seek" && !options) {
+      return;
+    }
+
+    sendSocketMessage(
+      command === "seek"
+        ? {
+            type: "playback_command",
+            command,
+            options,
+          }
+        : {
+            type: "playback_command",
+            command,
+          },
     );
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    sendSocketMessage({
+      type: "open_netflix_url",
+      url: netflixUrl.trim(),
+    });
   }
 
   function handleReconnect(): void {
@@ -282,49 +332,44 @@ export function App(): ReactElement {
   }
 
   function handleTransport(): void {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    if (!extensionConnected || !playback?.controllable) {
-      return;
-    }
-
-    socket.send(JSON.stringify({ type: "playback_command", command: mode }));
+    sendPlaybackCommand(mode);
   }
 
-  function handleSeek(command: PlaybackCommand): void {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+  function handleSeek(time: number): void {
+    sendPlaybackCommand("seek", {
+      kind: "relative",
+      time,
+    });
+  }
+
+  function handleSliderChange(event: ChangeEvent<HTMLInputElement>): void {
+    setDragTime(Number(event.target.value));
+  }
+
+  function handleSliderCommit(): void {
+    if (dragTime === null) {
       return;
     }
 
-    if (!extensionConnected || !playback?.controllable) {
+    if (!canControlPlayback()) {
+      setDragTime(null);
       return;
     }
 
-    socket.send(JSON.stringify({ type: "playback_command", command }));
+    sendPlaybackCommand("seek", {
+      kind: "absolute",
+      time: dragTime,
+    });
+    setDisplayCurrentTime(dragTime);
+    setDragTime(null);
   }
 
   function handleReload(): void {
-    if (
-      !socket ||
-      socket.readyState !== WebSocket.OPEN ||
-      !extensionConnected
-    ) {
-      return;
-    }
-
-    socket.send(
-      JSON.stringify({ type: "playback_command", command: "reload" }),
-    );
+    sendPlaybackCommand("reload");
   }
 
   function handleOpenNetflix(): void {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socket.send(JSON.stringify({ type: "open_netflix" }));
+    sendSocketMessage({ type: "open_netflix" });
   }
 
   return (
@@ -388,10 +433,10 @@ export function App(): ReactElement {
           <button
             className="seek-button"
             type="button"
-            onClick={() => handleSeek("seek_back_10")}
+            onClick={() => handleSeek(-10)}
             disabled={transportDisabled}
           >
-            <span>{seekLabel("seek_back_10")}</span>
+            <span>{seekLabel(-10)}</span>
           </button>
 
           <button
@@ -407,19 +452,31 @@ export function App(): ReactElement {
           <button
             className="seek-button"
             type="button"
-            onClick={() => handleSeek("seek_forward_10")}
+            onClick={() => handleSeek(10)}
             disabled={transportDisabled}
           >
-            <span>{seekLabel("seek_forward_10")}</span>
+            <span>{seekLabel(10)}</span>
           </button>
         </div>
 
-        <div className="progress-shell" aria-hidden="true">
+        <div className="progress-shell">
           <div className="progress-bar" style={{ width: `${progress}%` }} />
+          <input
+            type="range"
+            min={0}
+            max={playback?.duration ?? 0}
+            step={1}
+            value={sliderTime ?? 0}
+            onChange={handleSliderChange}
+            onMouseUp={handleSliderCommit}
+            onTouchEnd={handleSliderCommit}
+            disabled={sliderDisabled}
+            aria-label="Seek playback position"
+          />
         </div>
 
         <div className="time-row">
-          <span>{formatClock(displayCurrentTime)}</span>
+          <span>{formatClock(sliderTime)}</span>
           <span>{formatClock(playback?.duration)}</span>
         </div>
 
