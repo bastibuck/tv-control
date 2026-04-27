@@ -3,7 +3,7 @@ import {
   serverToClientMessageSchema,
   type PlaybackCommand,
   type PlaybackState,
-  type ServerToClientMessage
+  type ServerToClientMessage,
 } from "@tv-control/protocol";
 
 type ConnectionState = "connecting" | "connected" | "disconnected";
@@ -46,7 +46,10 @@ function playbackLabel(playback: PlaybackState | null): string {
   }
 }
 
-function statusLine(playback: PlaybackState | null, extensionConnected: boolean): string {
+function statusLine(
+  playback: PlaybackState | null,
+  extensionConnected: boolean,
+): string {
   if (!extensionConnected) {
     return "Open Netflix to launch Chrome. Controls come online as soon as the bridge connects.";
   }
@@ -67,7 +70,9 @@ function statusLine(playback: PlaybackState | null, extensionConnected: boolean)
 }
 
 function transportMode(playback: PlaybackState | null): "play" | "pause" {
-  return playback?.status === "playing" || playback?.status === "loading" ? "pause" : "play";
+  return playback?.status === "playing" || playback?.status === "loading"
+    ? "pause"
+    : "play";
 }
 
 function transportLabel(playback: PlaybackState | null): string {
@@ -95,7 +100,9 @@ export function App(): ReactElement {
   const [socketState, setSocketState] = useState<ConnectionState>("connecting");
   const [extensionConnected, setExtensionConnected] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState | null>(null);
-  const [displayCurrentTime, setDisplayCurrentTime] = useState<number | undefined>(undefined);
+  const [displayCurrentTime, setDisplayCurrentTime] = useState<
+    number | undefined
+  >(undefined);
   const [netflixUrl, setNetflixUrl] = useState("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [reconnectVersion, setReconnectVersion] = useState(0);
@@ -126,7 +133,13 @@ export function App(): ReactElement {
 
     nextSocket.addEventListener("open", () => {
       setSocketState("connected");
-      nextSocket.send(JSON.stringify({ type: "hello", role: "remote-ui", name: "phone-remote" }));
+      nextSocket.send(
+        JSON.stringify({
+          type: "hello",
+          role: "remote-ui",
+          name: "phone-remote",
+        }),
+      );
       nextSocket.send(JSON.stringify({ type: "request_state" }));
     });
 
@@ -208,7 +221,10 @@ export function App(): ReactElement {
     const timer = window.setInterval(() => {
       const elapsedSeconds = (window.performance.now() - startedAt) / 1000;
       const nextTime = baseTime + elapsedSeconds;
-      const cappedTime = playback.duration === undefined ? nextTime : Math.min(nextTime, playback.duration);
+      const cappedTime =
+        playback.duration === undefined
+          ? nextTime
+          : Math.min(nextTime, playback.duration);
       setDisplayCurrentTime(cappedTime);
     }, 1000);
 
@@ -218,7 +234,11 @@ export function App(): ReactElement {
   }, [playback]);
 
   const progress = useMemo(() => {
-    if (playback?.duration === undefined || displayCurrentTime === undefined || playback.duration <= 0) {
+    if (
+      playback?.duration === undefined ||
+      displayCurrentTime === undefined ||
+      playback.duration <= 0
+    ) {
       return 0;
     }
 
@@ -231,8 +251,14 @@ export function App(): ReactElement {
     !extensionConnected ||
     !playback?.controllable ||
     (mode === "play" && playback.status !== "paused") ||
-    (mode === "pause" && playback.status !== "playing" && playback.status !== "loading");
-  const playbackActive = playback !== null && (playback.status === "playing" || playback.status === "paused" || playback.status === "loading");
+    (mode === "pause" &&
+      playback.status !== "playing" &&
+      playback.status !== "loading");
+  const playbackActive =
+    playback !== null &&
+    (playback.status === "playing" ||
+      playback.status === "paused" ||
+      playback.status === "loading");
   const launchDisabled = socketState !== "connected";
   const reloadDisabled = socketState !== "connected" || !extensionConnected;
 
@@ -243,7 +269,9 @@ export function App(): ReactElement {
       return;
     }
 
-    socket.send(JSON.stringify({ type: "open_netflix_url", url: netflixUrl.trim() }));
+    socket.send(
+      JSON.stringify({ type: "open_netflix_url", url: netflixUrl.trim() }),
+    );
   }
 
   function handleReconnect(): void {
@@ -278,11 +306,17 @@ export function App(): ReactElement {
   }
 
   function handleReload(): void {
-    if (!socket || socket.readyState !== WebSocket.OPEN || !extensionConnected) {
+    if (
+      !socket ||
+      socket.readyState !== WebSocket.OPEN ||
+      !extensionConnected
+    ) {
       return;
     }
 
-    socket.send(JSON.stringify({ type: "playback_command", command: "reload" }));
+    socket.send(
+      JSON.stringify({ type: "playback_command", command: "reload" }),
+    );
   }
 
   function handleOpenNetflix(): void {
@@ -302,11 +336,21 @@ export function App(): ReactElement {
             <span className={`status-light status-light--${socketState}`} />
             <span className="status-glyph">R</span>
           </span>
-          <span className="status-pill" title={`Netflix bridge: ${extensionConnected ? "connected" : "disconnected"}`}>
-            <span className={`status-light status-light--${extensionConnected ? "connected" : "disconnected"}`} />
+          <span
+            className="status-pill"
+            title={`Netflix bridge: ${extensionConnected ? "connected" : "disconnected"}`}
+          >
+            <span
+              className={`status-light status-light--${extensionConnected ? "connected" : "disconnected"}`}
+            />
             <span className="status-glyph">N</span>
           </span>
-          <button className="refresh-button" type="button" onClick={handleReconnect} aria-label="Reconnect websocket">
+          <button
+            className="refresh-button"
+            type="button"
+            onClick={handleReconnect}
+            aria-label="Reconnect websocket"
+          >
             <span className="refresh-ring" />
           </button>
         </div>
@@ -331,7 +375,9 @@ export function App(): ReactElement {
         </form>
       </section>
 
-      <section className={`panel-card playback-card ${playbackActive ? "playback-card--active" : "playback-card--idle"}`}>
+      <section
+        className={`panel-card playback-card ${playbackActive ? "playback-card--active" : "playback-card--idle"}`}
+      >
         <div className="title-block">
           <p className="section-label">Now showing</p>
           <h2>{playback?.title ?? "Nothing has started yet"}</h2>
@@ -378,14 +424,26 @@ export function App(): ReactElement {
         </div>
 
         {!playback?.controllable && playback !== null ? (
-          <p className="hint-copy">The Netflix player is visible, but not ready for commands yet.</p>
+          <p className="hint-copy">
+            The Netflix player is visible, but not ready for commands yet.
+          </p>
         ) : null}
 
         <div className="action-row">
-          <button className="reload-button" type="button" onClick={handleOpenNetflix} disabled={launchDisabled}>
+          <button
+            className="reload-button"
+            type="button"
+            onClick={handleOpenNetflix}
+            disabled={launchDisabled}
+          >
             Open Netflix
           </button>
-          <button className="reload-button" type="button" onClick={handleReload} disabled={reloadDisabled}>
+          <button
+            className="reload-button"
+            type="button"
+            onClick={handleReload}
+            disabled={reloadDisabled}
+          >
             Reload Netflix Tab
           </button>
         </div>

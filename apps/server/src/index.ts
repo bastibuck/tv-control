@@ -11,16 +11,22 @@ import {
   stateSnapshotMessageSchema,
   type ClientRole,
   type PlaybackState,
-  type ServerToClientMessage
+  type ServerToClientMessage,
 } from "@tv-control/protocol";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 import { fetchNetflixMetadata, parseNetflixReference } from "./netflix.js";
 
 const host = process.env.HOST ?? "0.0.0.0";
 const port = Number(process.env.PORT ?? 8787);
-const remoteUiDistPath = fileURLToPath(new URL("../../remote-ui/dist", import.meta.url));
-const extensionDistPath = fileURLToPath(new URL("../../extension/dist", import.meta.url));
-const chromeProfilePath = fileURLToPath(new URL("../../../.tv-control-chrome", import.meta.url));
+const remoteUiDistPath = fileURLToPath(
+  new URL("../../remote-ui/dist", import.meta.url),
+);
+const extensionDistPath = fileURLToPath(
+  new URL("../../extension/dist", import.meta.url),
+);
+const chromeProfilePath = fileURLToPath(
+  new URL("../../../.tv-control-chrome", import.meta.url),
+);
 
 type RegisteredSocket = WebSocket & {
   isAlive?: boolean;
@@ -35,7 +41,7 @@ const mimeTypes: Record<string, string> = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
-  ".svg": "image/svg+xml; charset=utf-8"
+  ".svg": "image/svg+xml; charset=utf-8",
 };
 
 let extensionClient: RegisteredSocket | null = null;
@@ -43,7 +49,9 @@ const remoteClients = new Set<RegisteredSocket>();
 let latestPlayback: PlaybackState | null = null;
 const titleCache = new Map<string, string>();
 
-function titleForPlayback(playback: PlaybackState | null): PlaybackState | null {
+function titleForPlayback(
+  playback: PlaybackState | null,
+): PlaybackState | null {
   if (!playback?.url) {
     return playback;
   }
@@ -60,7 +68,7 @@ function titleForPlayback(playback: PlaybackState | null): PlaybackState | null 
 
   return {
     ...playback,
-    title: cachedTitle
+    title: cachedTitle,
   };
 }
 
@@ -74,7 +82,7 @@ function currentSnapshot(): ServerToClientMessage {
   return stateSnapshotMessageSchema.parse({
     type: "state_snapshot",
     extensionConnected: extensionClient?.readyState === WebSocket.OPEN,
-    playback: titleForPlayback(latestPlayback)
+    playback: titleForPlayback(latestPlayback),
   });
 }
 
@@ -117,7 +125,12 @@ function chromeExecutableCandidates(): string[] {
     case "darwin":
       return ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"];
     case "linux":
-      return ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
+      return [
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+      ];
     default:
       return [];
   }
@@ -127,7 +140,7 @@ async function spawnDetached(command: string, args: string[]): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       detached: true,
-      stdio: ["ignore", "ignore", "pipe"]
+      stdio: ["ignore", "ignore", "pipe"],
     });
 
     let settled = false;
@@ -181,7 +194,11 @@ async function spawnDetached(command: string, args: string[]): Promise<void> {
     child.once("exit", (code, signal) => {
       const details = stderr.trim();
       const suffix = details ? `\n${details}` : "";
-      rejectOnce(new Error(`Process exited early (code=${code ?? "null"}, signal=${signal ?? "null"})${suffix}`));
+      rejectOnce(
+        new Error(
+          `Process exited early (code=${code ?? "null"}, signal=${signal ?? "null"})${suffix}`,
+        ),
+      );
     });
   });
 }
@@ -194,7 +211,7 @@ async function openChromeUrl(url: string): Promise<void> {
     "--new-window",
     "--start-fullscreen",
     "--no-first-run",
-    "--no-default-browser-check"
+    "--no-default-browser-check",
   ];
 
   if (process.platform === "linux" && process.env.WAYLAND_DISPLAY) {
@@ -224,7 +241,9 @@ async function openChromeUrl(url: string): Promise<void> {
     throw new Error(`Unsupported platform: ${process.platform}`);
   }
 
-  throw new Error(`Failed to launch Google Chrome. Tried: ${failures.join(" | ")}`);
+  throw new Error(
+    `Failed to launch Google Chrome. Tried: ${failures.join(" | ")}`,
+  );
 }
 
 async function openNetflixInChrome(url: string): Promise<void> {
@@ -236,7 +255,10 @@ async function openNetflixInChrome(url: string): Promise<void> {
   await openChromeUrl(url);
 }
 
-async function serveRemoteUi(pathname: string, response: ServerResponse): Promise<void> {
+async function serveRemoteUi(
+  pathname: string,
+  response: ServerResponse,
+): Promise<void> {
   const normalizedPath = normalize(pathname).replace(/^\/+/, "");
   const candidate = join(remoteUiDistPath, normalizedPath || "index.html");
   const fallback = join(remoteUiDistPath, "index.html");
@@ -256,13 +278,15 @@ async function serveRemoteUi(pathname: string, response: ServerResponse): Promis
 
   const fileName = basename(target);
   const cacheControl =
-    fileName === "index.html" || fileName === "manifest.json" || fileName === "sw.js"
+    fileName === "index.html" ||
+    fileName === "manifest.json" ||
+    fileName === "sw.js"
       ? "no-cache"
       : "public, max-age=31536000, immutable";
 
   response.writeHead(200, {
     "content-type": mimeTypes[extname(target)] ?? "application/octet-stream",
-    "cache-control": cacheControl
+    "cache-control": cacheControl,
   });
 
   createReadStream(target).pipe(response);
@@ -274,7 +298,10 @@ const httpServer = createServer(async (request, response) => {
     return;
   }
 
-  const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  const url = new URL(
+    request.url,
+    `http://${request.headers.host ?? "localhost"}`,
+  );
 
   try {
     await serveRemoteUi(url.pathname, response);
@@ -285,7 +312,10 @@ const httpServer = createServer(async (request, response) => {
   }
 });
 
-const webSocketServer = new WebSocketServer({ server: httpServer, path: "/ws" });
+const webSocketServer = new WebSocketServer({
+  server: httpServer,
+  path: "/ws",
+});
 
 webSocketServer.on("connection", (socket: RegisteredSocket) => {
   socket.isAlive = true;
@@ -330,7 +360,13 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           remoteClients.add(socket);
         }
 
-        sendMessage(socket, helloAckMessageSchema.parse({ type: "hello_ack", role: message.role }));
+        sendMessage(
+          socket,
+          helloAckMessageSchema.parse({
+            type: "hello_ack",
+            role: message.role,
+          }),
+        );
         sendMessage(socket, currentSnapshot());
         broadcastSnapshot();
         break;
@@ -362,7 +398,10 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
 
         const reference = parseNetflixReference(message.url);
         if (!reference) {
-          sendError(socket, "Only Netflix watch, title, or supported share URLs are accepted.");
+          sendError(
+            socket,
+            "Only Netflix watch, title, or supported share URLs are accepted.",
+          );
           return;
         }
 
@@ -375,12 +414,15 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
           await openNetflixInChrome(reference.watchUrl);
         } catch (error) {
           console.error("Failed to open Netflix URL in Chrome", error);
-          sendError(socket, "Failed to open Google Chrome with the Netflix URL.");
+          sendError(
+            socket,
+            "Failed to open Google Chrome with the Netflix URL.",
+          );
           return;
         }
 
         sendMessage(socket, {
-          type: "open_netflix_url_accepted"
+          type: "open_netflix_url_accepted",
         });
         break;
       }
@@ -407,20 +449,23 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
 
         sendMessage(extensionClient, {
           type: "execute_playback_command",
-          command: message.command
+          command: message.command,
         });
         break;
       }
 
       case "playback_state": {
         if (socket.role !== "extension") {
-          sendError(socket, "Only extension clients can report playback state.");
+          sendError(
+            socket,
+            "Only extension clients can report playback state.",
+          );
           return;
         }
 
         latestPlayback = titleForPlayback({
           ...message.playback,
-          title: undefined
+          title: undefined,
         });
         broadcastSnapshot();
         refreshPlaybackTitleFromUrl(latestPlayback);

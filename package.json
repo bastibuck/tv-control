@@ -8,6 +8,11 @@
   "scripts": {
     "build": "pnpm -r build",
     "start": "pnpm --filter @tv-control/server start",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "format": "pnpm -r format",
+    "formatcheck": "pnpm -r formatcheck"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }

@@ -1,13 +1,15 @@
 const SUPPORTED_HOSTS = new Set(["netflix.com", "www.netflix.com"]);
 const NETFLIX_LOCALE_PATTERN = "(?:[a-z]{2}(?:-[A-Z]{2})?/)?";
-const NETFLIX_ID_PATTERN = new RegExp(`^/${NETFLIX_LOCALE_PATTERN}(?:watch|title)/(\\d+)`);
+const NETFLIX_ID_PATTERN = new RegExp(
+  `^/${NETFLIX_LOCALE_PATTERN}(?:watch|title)/(\\d+)`,
+);
 const NETFLIX_META_TITLE_PATTERNS = [
   /<meta[^>]*name=["']twitter:title["'][^>]*content=["']([^"']+)["'][^>]*>/i,
-  /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:title["'][^>]*>/i
+  /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:title["'][^>]*>/i,
 ];
 const NETFLIX_OG_TITLE_PATTERNS = [
   /<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["'][^>]*>/i,
-  /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["'][^>]*>/i
+  /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["'][^>]*>/i,
 ];
 const NETFLIX_TITLE_TAG_PATTERN = /<title[^>]*>([^<]+)<\/title>/i;
 
@@ -36,7 +38,7 @@ function buildReference(id: string): NetflixReference {
   return {
     id,
     watchUrl: `https://www.netflix.com/watch/${id}`,
-    titleUrl: `https://www.netflix.com/title/${id}`
+    titleUrl: `https://www.netflix.com/title/${id}`,
   };
 }
 
@@ -111,13 +113,15 @@ export function parseNetflixReference(rawUrl: string): NetflixReference | null {
   return buildReference(id);
 }
 
-export async function fetchNetflixMetadata(reference: NetflixReference): Promise<NetflixMetadata> {
+export async function fetchNetflixMetadata(
+  reference: NetflixReference,
+): Promise<NetflixMetadata> {
   try {
     const response = await fetch(reference.titleUrl, {
       headers: {
-        "user-agent": "tv-control/1.0"
+        "user-agent": "tv-control/1.0",
       },
-      redirect: "follow"
+      redirect: "follow",
     });
 
     if (!response.ok) {
@@ -126,7 +130,7 @@ export async function fetchNetflixMetadata(reference: NetflixReference): Promise
 
     const html = await response.text();
     return {
-      title: extractTitleFromHtml(html)
+      title: extractTitleFromHtml(html),
     };
   } catch {
     return {};

@@ -6,7 +6,9 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --write .",
+    "formatcheck": "prettier --check ."
   },
   "dependencies": {
     "@tv-control/protocol": "workspace:*"

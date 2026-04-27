@@ -6,6 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --host",
+    "format": "prettier --write .",
+    "formatcheck": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
