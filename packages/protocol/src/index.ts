@@ -65,6 +65,11 @@ export const openNetflixMessageSchema = z.object({
   type: z.literal("open_netflix"),
 });
 
+export const restartChromeMessageSchema = z.object({
+  type: z.literal("restart_chrome"),
+  url: z.url().optional(),
+});
+
 export const requestStateMessageSchema = z.object({
   type: z.literal("request_state"),
 });
@@ -82,6 +87,7 @@ export const clientToServerMessageSchema = z.discriminatedUnion("type", [
   helloMessageSchema,
   openNetflixUrlMessageSchema,
   openNetflixMessageSchema,
+  restartChromeMessageSchema,
   requestStateMessageSchema,
   heartbeatMessageSchema,
   playbackCommandMessageSchema,
@@ -105,6 +111,10 @@ export const openNetflixUrlAcceptedMessageSchema = z.object({
 
 export const openNetflixAcceptedMessageSchema = z.object({
   type: z.literal("open_netflix_accepted"),
+});
+
+export const restartChromeAcceptedMessageSchema = z.object({
+  type: z.literal("restart_chrome_accepted"),
 });
 
 export const executePlaybackCommandMessageSchema = z.discriminatedUnion(
@@ -138,6 +148,7 @@ export const serverToClientMessageSchema = z.discriminatedUnion("type", [
   openUrlMessageSchema,
   openNetflixUrlAcceptedMessageSchema,
   openNetflixAcceptedMessageSchema,
+  restartChromeAcceptedMessageSchema,
   executePlaybackCommandMessageSchema,
   stateSnapshotMessageSchema,
   errorMessageSchema,

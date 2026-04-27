@@ -3,7 +3,7 @@ import { mkdir, stat } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { basename, extname, join, normalize } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import {
   clientToServerMessageSchema,
   errorMessageSchema,
@@ -55,6 +55,7 @@ const remoteClients = new Set<RegisteredSocket>();
 let latestPlayback: PlaybackState | null = null;
 let pendingSeekTime: number | null = null;
 const titleCache = new Map<string, CachedNetflixMetadata>();
+let dedicatedChromeProcess: ChildProcess | null = null;
 
 function titleForPlayback(
   playback: PlaybackState | null,
@@ -153,8 +154,11 @@ function chromeExecutableCandidates(): string[] {
   }
 }
 
-async function spawnDetached(command: string, args: string[]): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
+async function spawnDetached(
+  command: string,
+  args: string[],
+): Promise<ChildProcess> {
+  return await new Promise<ChildProcess>((resolve, reject) => {
     const child = spawn(command, args, {
       detached: true,
       stdio: ["ignore", "ignore", "pipe"],
@@ -189,7 +193,7 @@ async function spawnDetached(command: string, args: string[]): Promise<void> {
       settled = true;
       cleanup();
       child.unref();
-      resolve();
+      resolve(child);
     }
 
     child.stderr?.on("data", (chunk: Buffer | string) => {
@@ -248,7 +252,7 @@ async function openChromeUrl(url: string): Promise<void> {
   const candidates = chromeExecutableCandidates();
   for (const command of candidates) {
     try {
-      await spawnDetached(command, args);
+      dedicatedChromeProcess = await spawnDetached(command, args);
       return;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -263,6 +267,16 @@ async function openChromeUrl(url: string): Promise<void> {
   throw new Error(
     `Failed to launch Google Chrome. Tried: ${failures.join(" | ")}`,
   );
+}
+
+async function restartDedicatedChrome(url: string): Promise<void> {
+  if (dedicatedChromeProcess && !dedicatedChromeProcess.killed) {
+    dedicatedChromeProcess.kill("SIGTERM");
+    dedicatedChromeProcess = null;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  await openChromeUrl(url);
 }
 
 async function openNetflixInChrome(url: string): Promise<void> {
@@ -442,6 +456,26 @@ webSocketServer.on("connection", (socket: RegisteredSocket) => {
 
         sendMessage(socket, {
           type: "open_netflix_url_accepted",
+        });
+        break;
+      }
+
+      case "restart_chrome": {
+        if (socket.role !== "remote-ui") {
+          sendError(socket, "Only remote UI clients can restart Chrome.");
+          return;
+        }
+
+        try {
+          await restartDedicatedChrome(message.url ?? "https://www.netflix.com");
+        } catch (error) {
+          console.error("Failed to restart dedicated Chrome", error);
+          sendError(socket, "Failed to restart the dedicated Chrome window.");
+          return;
+        }
+
+        sendMessage(socket, {
+          type: "restart_chrome_accepted",
         });
         break;
       }

@@ -104,6 +104,7 @@ input[type="range"]:disabled {
   z-index: 1;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.45rem;
   margin-bottom: 1rem;
 }
@@ -128,12 +129,24 @@ input[type="range"]:disabled {
   cursor: pointer;
 }
 
+.control-btns,
+.status-labels {
+  display: flex;
+  gap: 0.45rem;
+}
+
 .refresh-ring {
   width: 0.8rem;
   height: 0.8rem;
   border: 2px solid rgba(245, 241, 234, 0.72);
   border-right-color: transparent;
   border-radius: 999px;
+}
+
+.refresh-mark {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(245, 241, 234, 0.82);
 }
 
 .status-light {

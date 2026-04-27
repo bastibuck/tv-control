@@ -192,6 +192,7 @@ export function App(): ReactElement {
           setNetflixUrl("");
           break;
         case "open_netflix_accepted":
+        case "restart_chrome_accepted":
           // No state update needed; the button is a fire-and-forget action.
           break;
         case "error":
@@ -272,6 +273,7 @@ export function App(): ReactElement {
       playback.status === "loading");
   const launchDisabled = socketState !== "connected";
   const reloadDisabled = socketState !== "connected" || !extensionConnected;
+  const restartChromeDisabled = socketState !== "connected";
   const sliderDisabled =
     transportDisabled ||
     playback?.duration === undefined ||
@@ -340,6 +342,13 @@ export function App(): ReactElement {
     setReconnectVersion((value) => value + 1);
   }
 
+  function handleRestartChrome(): void {
+    sendSocketMessage({
+      type: "restart_chrome",
+      url: playback?.url,
+    });
+  }
+
   function handleTransport(): void {
     sendPlaybackCommand(mode);
   }
@@ -386,6 +395,8 @@ export function App(): ReactElement {
       <section className="hero-card">
         <div className="hero-noise" aria-hidden="true" />
         <div className="status-row" aria-label="Connections">
+          <div className="status-labels">
+
           <span className="status-pill" title={`Server: ${socketState}`}>
             <span className={`status-light status-light--${socketState}`} />
             <span className="status-glyph">R</span>
@@ -393,20 +404,35 @@ export function App(): ReactElement {
           <span
             className="status-pill"
             title={`Netflix bridge: ${extensionConnected ? "connected" : "disconnected"}`}
-          >
+            >
             <span
               className={`status-light status-light--${extensionConnected ? "connected" : "disconnected"}`}
-            />
+              />
             <span className="status-glyph">N</span>
           </span>
+              </div>
+
+
+          <div className="control-btns">
+
           <button
             className="refresh-button"
             type="button"
             onClick={handleReconnect}
             aria-label="Reconnect websocket"
-          >
+            >
             <span className="refresh-ring" />
           </button>
+          <button
+            className="refresh-button"
+            type="button"
+            onClick={handleRestartChrome}
+            aria-label="Restart dedicated Chrome"
+            disabled={restartChromeDisabled}
+            >
+            <span className="refresh-mark">R</span>
+          </button>
+            </div>
         </div>
 
         <p className="hero-kicker">Netflix remote</p>
